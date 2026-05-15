@@ -61,6 +61,57 @@ There is no `dev` server, no lint script yet, no typecheck script yet. (These ar
 docs/superpowers/          # design spec + implementation plan for this tool
 ```
 
+## Multi-agent infrastructure
+
+The dev-flow uses Claude Code's built-in multi-agent primitives:
+
+### Named subagents (`.claude/agents/`)
+
+Each is a focused, reusable subagent with its own system prompt and tool allowance. Spawn by name from a slash command via the Agent tool's `subagent_type`:
+
+| Subagent | Used by | Role |
+|---|---|---|
+| `intake-analyst` | `/task:start` | Surfaces ambiguities, drafts testable requirements, marks open questions with `[NEEDS-ANSWER]` |
+| `codebase-researcher` | `/task:research` | Maps existing patterns and integration points, citing real file paths |
+| `task-planner` | `/task:plan` | Produces ordered task list with acceptance criteria + test plan |
+| `tdd-implementer` | (optional, per-task in `/task:implement`) | Executes one plan task with strict RED-GREEN-REFACTOR discipline |
+| `judge-reviewer` | `/task:verify` | Phase 6 judge gate. Strictly fresh-context — never sees plan/research/implementation |
+| `security-auditor` | `/task:security` | OWASP top-10 review of code diffs |
+
+When updating an agent's behavior, edit the agent file itself rather than the slash command. The slash command's job is to wire inputs/outputs and enforce the state machine; the agent's job is to do the work.
+
+### Skills (`.claude/skills/`)
+
+Reusable prompt fragments that any agent (or you, in conversation) can pull in. Claude Code auto-loads a skill when its `description` matches the current task.
+
+| Skill | Used by |
+|---|---|
+| `clarifying-questions` | `intake-analyst` (and any agent surfacing ambiguities) |
+| `tdd-discipline` | `tdd-implementer` (and any code-writing context) |
+| `judge-gate` | `judge-reviewer` (and any verification context) |
+| `owasp-top-10` | `security-auditor` (and any security-review context) |
+| `bitbucket-pr-body` | `/task:pr` (and any PR-composition context) |
+
+Skills are intentionally cross-cutting — they're not tied to one phase. If you find yourself re-explaining a pattern in multiple agents, it probably wants to be a skill.
+
+### Hooks (`.claude/settings.json`)
+
+Deterministic event handlers that run on tool/lifecycle events. They run shell commands, not LLM calls — so they're cheap, fast, and predictable. Currently registered:
+
+| Event | Matcher | Hook script | Purpose |
+|---|---|---|---|
+| `PostToolUse` | `Write` | `npx tsx .dev-flow/hooks/auto-journal.ts` | When an agent writes to `tickets/<TICKET>/...`, append a journal entry automatically |
+| `PreToolUse` | `Bash` | `npx tsx .dev-flow/hooks/block-trunk-push.ts` | Refuse `git push origin main\|master\|develop` and unsafe force-pushes (exit 2 blocks) |
+| `Stop` | (any) | `npx tsx .dev-flow/hooks/validate-state.ts` | Walk all `tickets/*/state.json` files; warn on stderr if any are malformed |
+
+Each hook has a pure function tested in `.dev-flow/__tests__/hooks/`. The CLI wrapper at the bottom of each hook file reads stdin JSON, calls the function, and exits with the right code. The hooks use `npx tsx` because the dev-flow's source is TypeScript; if you ever switch to plain Node, drop the `npx tsx` wrapper.
+
+### How to add a new agent / skill / hook
+
+- **New agent:** drop a `.md` file in `.claude/agents/` with frontmatter (`name`, `description`, `tools`, `model`) and a system prompt body. Spawn it via `subagent_type: <name>` from a slash command or directly from a conversation.
+- **New skill:** drop a `SKILL.md` in `.claude/skills/<skill-name>/` with frontmatter (`name`, `description`). Claude Code auto-loads it when the description matches the current task.
+- **New hook:** drop a `.ts` file in `.dev-flow/hooks/`, expose a pure function for testability, add a CLI wrapper at the bottom, register in `.claude/settings.json`. Tests in `.dev-flow/__tests__/hooks/`.
+
 ## Conventions (when working on the tool itself)
 
 - **Branch naming:** `feature/<TICKET>-<title-slug>` if you're using the tool to develop the tool (dogfooding). For ordinary maintenance, conventional `feature/<short-name>` is fine.

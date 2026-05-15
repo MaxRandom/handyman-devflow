@@ -92,3 +92,32 @@ git commit -m "<phase>: <TICKET> <summary>"
 ```
 
 Phase 4 (implement) additionally commits per task in the plan, with `Plan-Task: <task-id>` trailer.
+
+## Subagents and skills
+
+Each phase that needs LLM judgment spawns a named subagent (defined in `.claude/agents/`). The subagent has isolated context — it doesn't see the orchestrator's history, just what the slash command passes in.
+
+| Phase | Subagent | Notes |
+|---|---|---|
+| 1 Intake | `intake-analyst` | Sees ticket + codebase map + AGENTS.md |
+| 2 Research | `codebase-researcher` | Sees intake + affected files + AGENTS.md |
+| 3 Plan | `task-planner` | Sees intake + research + AGENTS.md |
+| 4 Implement | (optionally `tdd-implementer` per task) | Per-task spawn enforces TDD discipline |
+| 6 Verify | `judge-reviewer` | **STRICTLY** sees only intake + diff + test evidence (NOT plan/research/implementation — that would bias the judge) |
+| 7 Security | `security-auditor` | Sees diff + npm audit output + semgrep output |
+
+Subagents reference reusable skills (in `.claude/skills/`):
+
+- `clarifying-questions` — Socratic ambiguity-finding pattern (intake-analyst)
+- `tdd-discipline` — RED-GREEN-REFACTOR enforcement (tdd-implementer)
+- `judge-gate` — fresh-context verification protocol (judge-reviewer)
+- `owasp-top-10` — security review checklist (security-auditor)
+- `bitbucket-pr-body` — PR body composition (Phase 8)
+
+Hooks (in `.claude/settings.json`) provide deterministic safety rails outside the LLM loop:
+
+- Writes to `tickets/<TICKET>/...` are auto-journaled.
+- Direct pushes to trunk (`main`/`master`/`develop`) are blocked.
+- On Stop, all `state.json` files are validated against the StateSchema.
+
+If a hook fails or warns, it appears in stderr but does NOT modify the artifact chain. The slash command's atomic-commit + validator gate is still the source of truth for "did this phase complete."

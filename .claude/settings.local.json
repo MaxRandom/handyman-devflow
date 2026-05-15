@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -la /Users/maxsysenko/.claude/memory/ 2>/dev/null)"
+    ]
+  }
+}

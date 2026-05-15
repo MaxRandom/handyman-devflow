@@ -22,4 +22,10 @@ describe('validators/research', () => {
     expect(r.ok).toBe(false);
     expect(r.errors.some((e) => /file path/i.test(e))).toBe(true);
   });
+
+  it('fails when patterns section is empty even if other sections cite paths', () => {
+    const r = validateResearch(join(fixtures, '02-RESEARCH.empty-patterns-but-paths-elsewhere.md'));
+    expect(r.ok).toBe(false);
+    expect(r.errors.some((e) => /file path/i.test(e))).toBe(true);
+  });
 });

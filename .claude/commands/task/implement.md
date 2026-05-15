@@ -80,7 +80,7 @@ git commit -m "implement: $TICKET task log"
 
 ```
 cd .dev-flow && \
-  PLAN_TASK_IDS="$(grep -oP '^### Task \K\d+' ../tickets/$TICKET/03-PLAN.md | tr '\n' ',')" \
+  PLAN_TASK_IDS="$(sed -n -E 's/^### Task ([0-9]+):.*/\1/p' ../tickets/$TICKET/03-PLAN.md | tr '\n' ',')" \
   LINT_CMD="pnpm lint" TYPECHECK_CMD="pnpm typecheck" BASE_BRANCH="develop" \
   npx tsx src/validators/implementation.ts $TICKET
 ```

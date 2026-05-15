@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { simpleGit } from 'simple-git';
 import { fail, ok, type ValidatorResult } from '../utils/validator-result.js';
+import { findProjectRoot } from '../utils/project-root.js';
 import { ticketDir } from '../state.js';
 
 export interface ImplArgs {
@@ -42,7 +43,8 @@ export async function validateImplementation(args: ImplArgs): Promise<ValidatorR
 if (import.meta.url === `file://${process.argv[1]}`) {
   const ticket = process.argv[2];
   if (!ticket) { console.error('Usage: tsx implementation.ts <TICKET>'); process.exit(2); }
-  const dir = ticketDir(process.cwd(), ticket);
+  const root = findProjectRoot();
+  const dir = ticketDir(root, ticket);
   const planPath = join(dir, '03-PLAN.md');
   if (!existsSync(planPath)) { console.error('03-PLAN.md missing'); process.exit(2); }
   const planText = readFileSync(planPath, 'utf8');
@@ -50,6 +52,6 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const lintCmd = process.env.LINT_CMD ?? 'pnpm lint';
   const typecheckCmd = process.env.TYPECHECK_CMD ?? 'pnpm typecheck';
   const base = process.env.BASE_BRANCH ?? 'develop';
-  validateImplementation({ cwd: process.cwd(), base, planTaskIds: ids, lintCmd, typecheckCmd })
+  validateImplementation({ cwd: root, base, planTaskIds: ids, lintCmd, typecheckCmd })
     .then((r) => { console.log(JSON.stringify(r)); process.exit(r.ok ? 0 : 1); });
 }

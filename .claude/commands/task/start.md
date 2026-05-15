@@ -29,7 +29,7 @@ Use the Atlassian MCP tool `getJiraIssue` with key=`$1`. Capture:
 
 ### 2. Compute branch name
 
-- Slug = lowercase kebab of the Jira title, max 60 chars (use `cd .dev-flow && npx tsx -e "import {slugify} from './src/utils/slug.js'; console.log(slugify(process.argv[1]))" "<title>"`).
+- Slug = lowercase kebab of the Jira title, max 60 chars. Compute via `cd .dev-flow && npx tsx src/utils/slug-cli.ts "<title>"` (replaces the older `-e` form which had an argv-index bug).
 - Branch = `feature/$1-<slug>`.
 
 ### 3. Create feature branch
@@ -99,7 +99,7 @@ Write `tickets/$1/state.json`:
 
 ### 8. Append to journal
 
-Run: `cd .dev-flow && npx tsx -e "import {append} from './src/journal.js'; append('..', '$1', { phase: 'intake', step: 'draft', status: 'ok' })"`
+Run: `cd .dev-flow && npx tsx src/journal-cli.ts $1 intake draft ok`
 
 ### 9. Commit atomically
 

@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fail, ok, type ValidatorResult } from '../utils/validator-result.js';
+import { findProjectRoot } from '../utils/project-root.js';
 import { ticketDir } from '../state.js';
 
 const REQUIRED_LAYERS = ['Unit', 'E2E'];
@@ -55,7 +56,7 @@ function sectionBlock(text: string, heading: string): string {
 if (import.meta.url === `file://${process.argv[1]}`) {
   const ticket = process.argv[2];
   if (!ticket) { console.error('Usage: tsx test.ts <TICKET>'); process.exit(2); }
-  const path = join(ticketDir(process.cwd(), ticket), '05-TEST-EVIDENCE.md');
+  const path = join(ticketDir(findProjectRoot(), ticket), '05-TEST-EVIDENCE.md');
   const r = validateTestEvidence(path);
   console.log(JSON.stringify(r));
   process.exit(r.ok ? 0 : 1);

@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fail, ok, type ValidatorResult } from '../utils/validator-result.js';
+import { findProjectRoot } from '../utils/project-root.js';
 import { ticketDir } from '../state.js';
 
 const URL_RE = /\*\*URL:\*\*\s+(https?:\/\/\S+)/i;
@@ -20,7 +21,7 @@ export function validatePR(filePath: string): ValidatorResult {
 if (import.meta.url === `file://${process.argv[1]}`) {
   const ticket = process.argv[2];
   if (!ticket) { console.error('Usage: tsx pr.ts <TICKET>'); process.exit(2); }
-  const path = join(ticketDir(process.cwd(), ticket), '08-PR.md');
+  const path = join(ticketDir(findProjectRoot(), ticket), '08-PR.md');
   const r = validatePR(path);
   console.log(JSON.stringify(r));
   process.exit(r.ok ? 0 : 1);

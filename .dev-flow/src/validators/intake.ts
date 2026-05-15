@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fail, ok, type ValidatorResult } from '../utils/validator-result.js';
+import { findProjectRoot } from '../utils/project-root.js';
 import { ticketDir } from '../state.js';
 
 const REQUIRED_SECTIONS = ['Understood requirements', 'Open questions', 'Affected areas'];
@@ -26,7 +27,7 @@ export function validateIntake(filePath: string): ValidatorResult {
 if (import.meta.url === `file://${process.argv[1]}`) {
   const ticket = process.argv[2];
   if (!ticket) { console.error('Usage: tsx intake.ts <TICKET>'); process.exit(2); }
-  const path = join(ticketDir(process.cwd(), ticket), '01-INTAKE.md');
+  const path = join(ticketDir(findProjectRoot(), ticket), '01-INTAKE.md');
   const r = validateIntake(path);
   console.log(JSON.stringify(r));
   process.exit(r.ok ? 0 : 1);

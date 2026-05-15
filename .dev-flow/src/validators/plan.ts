@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fail, ok, type ValidatorResult } from '../utils/validator-result.js';
+import { findProjectRoot } from '../utils/project-root.js';
 import { ticketDir } from '../state.js';
 
 export function validatePlan(filePath: string): ValidatorResult {
@@ -32,7 +33,7 @@ export function validatePlan(filePath: string): ValidatorResult {
 if (import.meta.url === `file://${process.argv[1]}`) {
   const ticket = process.argv[2];
   if (!ticket) { console.error('Usage: tsx plan.ts <TICKET>'); process.exit(2); }
-  const path = join(ticketDir(process.cwd(), ticket), '03-PLAN.md');
+  const path = join(ticketDir(findProjectRoot(), ticket), '03-PLAN.md');
   const r = validatePlan(path);
   console.log(JSON.stringify(r));
   process.exit(r.ok ? 0 : 1);

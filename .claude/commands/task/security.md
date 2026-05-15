@@ -34,11 +34,16 @@ jq '.advisories | to_entries | map(select(.value.severity == "high" or .value.se
 which semgrep && semgrep --config=auto --json --output=/tmp/$TICKET.semgrep.json . || echo "semgrep not installed — skipping"
 ```
 
-### 3. Manual diff review (subagent)
+### 3. Manual diff review via security-auditor
 
-Spawn a subagent with the diff (`git diff develop...HEAD`). Ask it:
+Use the Agent tool with `subagent_type: security-auditor`. Pass:
+- The diff (`git diff develop...HEAD`)
+- The output of `pnpm audit --json` from Step 1 (or `npm audit --json` if not pnpm)
+- The output of semgrep from Step 2 if it ran
 
-> "Review this diff for OWASP top-10 vulnerabilities: SQL injection, XSS, broken authentication, missing authorization checks, secret exposure (hardcoded keys, tokens), unsafe deserialization, SSRF, prompt injection (if LLM code is touched), insecure direct object references, security misconfiguration. For each finding, give: severity (low/moderate/high/critical), location (file:line), and recommendation. Be specific — do not flag generic concerns. If nothing concerning, say so."
+The agent's system prompt handles the output format (three subsections: Dependency findings / Static analysis findings / Manual diff review, each as a markdown table with severity/location/status/reason). The agent walks the OWASP top-10 + secrets + prompt injection.
+
+Capture the agent's return value as the body of `07-SECURITY.md`.
 
 ### 4. Write `tickets/$TICKET/07-SECURITY.md`
 

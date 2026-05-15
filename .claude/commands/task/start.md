@@ -48,30 +48,16 @@ git checkout -b feature/$1-<slug> origin/<default_base>
 - `git log --since=30.days --pretty=format:'%h %s' | head -20`
 - For each keyword in the ticket title, `grep -l -r --include='*.ts' --include='*.tsx' "<keyword>" apps services | head -10`
 
-### 5. Spawn an intake subagent
+### 5. Spawn the intake-analyst subagent
 
-Use the Agent tool with subagent_type=general-purpose. Provide the agent with:
-- The Jira ticket text
-- The codebase map (paths + recent commits + keyword hits)
-- The team's `AGENTS.md`
+Use the Agent tool with `subagent_type: intake-analyst`. Pass:
+- The Jira ticket text (title, description, acceptance criteria, comments)
+- The codebase map from Step 4 (paths + recent commits + keyword grep results)
+- The contents of `AGENTS.md`
 
-Ask the subagent to produce three sections:
+The agent's system prompt handles the output format (the three-section template with `[NEEDS-ANSWER]` markers). You don't need to repeat the format here.
 
-```
-## Understood requirements
-- bullet 1 (testable: contains a verb + measurable outcome)
-- bullet 2
-...
-
-## Open questions
-- [NEEDS-ANSWER] question 1
-- [NEEDS-ANSWER] question 2
-(or "(none)" if intake is genuinely unambiguous)
-
-## Affected areas
-- exact/file/path.tsx — reasoning
-- exact/file/path.ts — reasoning
-```
+Capture the agent's return value as the body of `01-INTAKE.md` (Step 6).
 
 ### 6. Write the artifact
 

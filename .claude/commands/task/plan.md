@@ -15,43 +15,16 @@ Determine ticket from current branch: `git branch --show-current` → extract `$
 
 ## Actions
 
-### 1. Spawn a planning subagent
+### 1. Spawn the task-planner subagent
 
-Use the Agent tool. Provide the subagent with:
-- `01-INTAKE.md`
-- `02-RESEARCH.md`
-- AGENTS.md
+Use the Agent tool with `subagent_type: task-planner`. Pass:
+- The full content of `tickets/$TICKET/01-INTAKE.md`
+- The full content of `tickets/$TICKET/02-RESEARCH.md`
+- The contents of `AGENTS.md`
 
-Ask the subagent to produce a plan in the following exact format:
+The agent's system prompt handles the output format (Tasks with acceptance criteria + Files / Test plan / Rollback note). Each task is small and individually committable.
 
-````
-## Tasks
-
-### Task 1: <component or area> — <one-line goal>
-**Acceptance criteria:** <one sentence; measurable; how we'll know this task is done>
-**Files:** <comma-separated paths to be touched>
-
-### Task 2: ...
-**Acceptance criteria:** ...
-**Files:** ...
-
-(... as many tasks as needed, kept small/focused)
-
-## Test plan
-
-### Unit
-- <test file or test name>: <what it asserts>
-
-### Integration
-- <test file or test name>: <what it asserts>
-- (or "N/A" if not applicable)
-
-### E2E
-- <playwright spec>: <user journey assertion>
-
-## Rollback note
-<one-paragraph rollback strategy if this PR ships and breaks production>
-````
+Capture the agent's return value as the body of `03-PLAN.md`.
 
 ### 2. Write the artifact + commit
 

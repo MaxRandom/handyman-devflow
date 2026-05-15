@@ -19,31 +19,17 @@ Determine ticket from current branch: `git branch --show-current` → extract `<
 
 Read `tickets/$TICKET/01-INTAKE.md`. Extract the **Affected areas** list.
 
-### 2. Spawn a research subagent
+### 2. Spawn the codebase-researcher subagent
 
-Use the Agent tool. Provide the subagent with:
-- `01-INTAKE.md` content
-- A read of each "Affected area" file (use Glob/Read)
-- The repo's AGENTS.md
-- Output of: `find apps services -name 'package.json' | xargs grep -l <keywords>` (for similar features)
+Use the Agent tool with `subagent_type: codebase-researcher`. Pass:
+- The full content of `tickets/$TICKET/01-INTAKE.md`
+- A read of each "Affected area" file (use Glob/Read in the calling context, then pass file contents)
+- The contents of `AGENTS.md`
+- Output of: `find apps services -name 'package.json' 2>/dev/null | xargs grep -l <keywords> 2>/dev/null` for similar features
 
-Ask the subagent to produce:
+The agent's system prompt handles the output format (Existing implementation / Patterns to follow / Integration points). The patterns section MUST cite real file paths in backticks — the validator enforces this.
 
-```
-## Existing implementation
-<what's already there relevant to this ticket>
-
-## Patterns to follow
-- `path/to/example.ts` — pattern description (Zod resolver, error boundary, etc.)
-- `path/to/another.ts` — pattern description
-
-## Integration points
-- Backend endpoint: `path` METHOD /url
-- State store: `path`
-- Test fixtures: `path`
-```
-
-The patterns section MUST cite real file paths in backticks. The validator enforces this.
+Capture the agent's return value as the body of `02-RESEARCH.md`.
 
 ### 3. Write the artifact
 

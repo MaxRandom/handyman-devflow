@@ -21,21 +21,17 @@ Determine ticket from current branch: `git branch --show-current` → `$TICKET`.
 git diff develop...HEAD > /tmp/$TICKET.diff
 ```
 
-### 2. Spawn the judge subagent
+### 2. Spawn the judge-reviewer subagent
 
-This is the most important subagent — its context must be FRESH. Use the Agent tool with subagent_type=general-purpose.
+Use the Agent tool with `subagent_type: judge-reviewer`. **Pass ONLY:**
+- The full content of `tickets/$TICKET/01-INTAKE.md`
+- The diff from Step 1 (`/tmp/$TICKET.diff`)
+- The full content of `tickets/$TICKET/05-TEST-EVIDENCE.md`
+- A list of file paths under `tickets/$TICKET/evidence/`
 
-Provide ONLY:
-- Contents of `tickets/$TICKET/01-INTAKE.md`
-- Contents of `/tmp/$TICKET.diff`
-- Contents of `tickets/$TICKET/05-TEST-EVIDENCE.md`
-- A list of evidence file paths under `tickets/$TICKET/evidence/`
+**Do NOT pass** `02-RESEARCH.md`, `03-PLAN.md`, or `04-IMPLEMENTATION.md`. The judge must NOT see the implementer's framing. The agent's system prompt enforces this discipline; if you accidentally pass forbidden inputs, the agent will refuse and ask you to re-spawn it.
 
-Do NOT include 02-RESEARCH.md, 03-PLAN.md, or 04-IMPLEMENTATION.md — those would bias the judge toward the implementer's framing.
-
-Ask the subagent:
-
-> "For each acceptance criterion in the Understood requirements section of INTAKE.md, judge whether the diff + test evidence demonstrates the criterion is met. Output a markdown table: `| # | Acceptance criterion | Verdict | Evidence |`. Verdict ∈ {PASS, FAIL, UNCLEAR}. Evidence must cite a file:line, a test name, or an evidence/ artifact path. Be skeptical — if the diff doesn't clearly satisfy the criterion, mark UNCLEAR. Do not assume things you can't see."
+Capture the agent's return value (a verdict table + optional Notes) as the body of `06-VERIFICATION.md`.
 
 ### 3. Write the artifact
 

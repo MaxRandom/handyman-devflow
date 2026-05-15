@@ -1,0 +1,30 @@
+provider:
+  type: bitbucket
+  mcp_server: atlassian
+  workspace: handyman-team
+  repo: handyman
+  branch_pattern: "feature/{ticket}-{slug}"
+  default_base: develop
+  default_reviewers: []
+  default_labels: []
+
+tracker:
+  type: jira
+  mcp_server: atlassian
+  base_url: https://handyman-team.atlassian.net
+  project_key: PROJ
+  pr_transition: "In Review"
+
+stack:
+  package_manager: pnpm
+  test_commands:
+    unit: "pnpm test"
+    integration: "pnpm test:integration"
+    e2e: "pnpm test:e2e"
+    lint: "pnpm lint"
+    typecheck: "pnpm typecheck"
+  areas:
+    frontend: { path: "apps/web", framework: nextjs }
+    backend:  { path: "apps/api", framework: nestjs }
+    services: { path: "services/*" }
+    e2e:      { path: "e2e", framework: playwright }

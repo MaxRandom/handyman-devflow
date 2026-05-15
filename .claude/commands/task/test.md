@@ -5,6 +5,8 @@ allowed-tools: Bash, Read, Write, Edit, Glob, Grep
 
 # /task:test — Phase 5
 
+> **Shell environment:** all shell commands in this file assume bash with `set -o pipefail`. The harness's Bash tool defaults to bash on macOS and Linux. Run `set -o pipefail` once at the start of any shell block that uses `${PIPESTATUS[*]}`.
+
 Determine ticket from current branch: `git branch --show-current` → `$TICKET`.
 
 ## Precondition checks (HARD)

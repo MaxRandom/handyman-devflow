@@ -77,6 +77,7 @@ Each is a focused, reusable subagent with its own system prompt and tool allowan
 | `tdd-implementer` | (optional, per-task in `/task:implement`) | Executes one plan task with strict RED-GREEN-REFACTOR discipline |
 | `judge-reviewer` | `/task:verify` | Phase 6 judge gate. Strictly fresh-context — never sees plan/research/implementation |
 | `security-auditor` | `/task:security` | OWASP top-10 review of code diffs |
+| `setup-wizard` | `/task:setup` | One-time configuration wizard. Detects repo state, asks Socratic questions, validates against Atlassian MCP, returns a complete config.yaml |
 
 When updating an agent's behavior, edit the agent file itself rather than the slash command. The slash command's job is to wire inputs/outputs and enforce the state machine; the agent's job is to do the work.
 
@@ -123,6 +124,7 @@ Each hook has a pure function tested in `.dev-flow/__tests__/hooks/`. The CLI wr
 
 If you use the tool on itself: see `.dev-flow/PROCESS.md` for the full flow. Quick reference:
 
+- `/task:setup` — one-time configuration wizard (run before first use). `--check` for verification only.
 - `/task:start <TICKET>` — Phase 1 (intake)
 - `/task:research` — Phase 2
 - `/task:plan` — Phase 3
@@ -138,7 +140,9 @@ The validators in `.dev-flow/src/validators/` are pure Node — they refuse to a
 
 ## Configuration
 
-`.dev-flow/config.yaml` ships with placeholder values (`workspace: handyman-team`, `project_key: PROJ`, areas pointing at fictional `apps/web` etc.). These are EXAMPLES for tool consumers. Before using the tool on a real ticket — either dogfooding here, or in a consumer repo — edit `config.yaml` to point at the real Atlassian workspace + project key + repo layout.
+`.dev-flow/config.yaml` ships with placeholder values (`workspace: handyman-team`, `project_key: PROJ`, areas pointing at fictional `apps/web` etc.). These are EXAMPLES for tool consumers. Before using the tool on a real ticket — either dogfooding here, or in a consumer repo — run `/task:setup` to configure interactively. The wizard auto-detects what it can (git remote, package manager, test scripts, directory layout) and asks for the rest (Atlassian project key, reviewers). It validates against the live Atlassian MCP before writing.
+
+For minor edits to an already-working config, edit `config.yaml` directly, then run `/task:setup --check` to validate.
 
 ## What NOT to do
 

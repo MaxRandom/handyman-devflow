@@ -1,14 +1,33 @@
 # Dev Cycle Process
 
+## Tracker mode vs local-ticket mode
+
+The workflow supports two modes, switched by whether `.dev-flow/config.yaml` contains a `tracker:` block.
+
+- **Tracker mode** (`tracker:` present) — Phase 1 fetches the ticket from Jira/Linear via MCP, Phase 8 transitions the ticket and posts a comment with the PR URL.
+- **Local-ticket mode** (no `tracker:` block) — Phase 1 accepts a freeform title (`/handyman-devflow:start "fix login spinner"`) and derives a local ticket id like `LOCAL-20260518-fix-login-spinner`. Every MCP call to the tracker is skipped. The PR artifact records `**Tracker:** (none — local-ticket mode, no transition performed)` instead of a Jira-transition line.
+
+All other phases (research, plan, implement, test, verify, security) behave identically in both modes.
+
 ## Phase order
-1. **Intake** (`/task:start <TICKET>`) — fetch ticket, draft requirements, surface open questions, create feature branch.
+1. **Intake** (`/task:start <TICKET-KEY-or-freeform-title>`) — fetch ticket (tracker mode) OR derive local id from title (local-ticket mode), draft requirements, surface open questions, create feature branch.
 2. **Research** (`/task:research`) — analyze codebase, document patterns to follow.
 3. **Plan** (`/task:plan`) — produce ordered task list + test plan.
-4. **Implement** (`/task:implement`) — execute plan tasks with atomic commits.
-5. **Test** (`/task:test`) — run unit/integration/e2e, capture evidence bundle.
-6. **Verify** (`/task:verify`) — fresh-context judge subagent reviews against acceptance criteria.
+4. **Implement** (`/task:implement`) — execute plan tasks with atomic commits, lint + typecheck, then **mandatory real-condition smoke test** (`stack.smoke_test`).
+5. **Test** (`/task:test`) — run unit/integration/e2e plus **mandatory smoke**; capture full evidence bundle.
+6. **Verify** (`/task:verify`) — fresh-context judge subagent reviews against acceptance criteria. **Auto-loops back to /implement on FAIL/UNCLEAR**, bounded by `workflow.verify_max_attempts` (default 3).
 7. **Security** (`/task:security`) — npm audit + semgrep + diff review.
 8. **PR** (`/task:pr`) — push branch, open PR, transition Jira ticket, post link.
+
+## The verification floor
+
+The workflow's core promise is that **no phase advances on assumption**. Every phase that ships code produces evidence:
+
+- **Phase 4 (implement)** runs lint + typecheck AND the configured `stack.smoke_test` against the freshly built artifact. The smoke runner writes `tickets/<TICKET>/evidence/impl-smoke-*/impl-smoke.log` with command, exit code, stdout/stderr, and timeout flag. Smoke failure → phase paused, no advance.
+- **Phase 5 (test)** runs unit + (optional) integration + (optional) e2e + **mandatory** smoke. The `05-TEST-EVIDENCE.md` artifact must contain `## Unit` and `## Smoke` sections with `Result: PASS`. The test validator rejects a missing or failing Smoke section.
+- **Phase 6 (verify)** sees only the intake + diff + test evidence and judges acceptance criteria. On FAIL/UNCLEAR, the workflow auto-rewinds to `plan-complete`, appends failing rows as remediation hints to `04-IMPLEMENTATION.md`, and increments `state.verify_attempts`. The loop is bounded — once `verify_attempts >= workflow.verify_max_attempts`, control hands back to the human.
+
+Smoke commands are project-type-specific (see `templates/config.yaml.example` for a catalog: web service, frontend, CLI, library, desktop). The principle is invariant: every project has a way to actually run the built thing.
 
 Helpers: `/task:status` (no state change), `/task:reset --to <phase>` (rewind state.phase).
 
@@ -49,11 +68,14 @@ Valid `phase` values, in order:
 - `intake-complete`    (Phase 1 validator passed)
 - `research-complete`
 - `plan-complete`
-- `implementation-complete`
-- `tests-complete`
-- `verified`
+- `implementation-complete`  (lint + typecheck + smoke all passed)
+- `tests-complete`           (Unit + Smoke layers green; E2E/Integration where applicable)
+- `verified`                 (judge gate cleared; verify_attempts reset to 0)
 - `security-reviewed`
 - `pr-opened`
+
+Additional state fields:
+- `verify_attempts: number` — verify-loop bookkeeping. Bumped on FAIL/UNCLEAR; reset to 0 on a clean verified PASS.
 
 ## Validator contract
 

@@ -4,7 +4,7 @@ Cross-vendor team rules. Read by Claude Code, Codex CLI, Cursor, Aider, Copilot,
 
 ## What this repo is
 
-**Handyman is the source repo of a Jira-driven AI dev cycle tool, packaged as a Claude Code plugin (`handyman-devflow`).** The tool itself orchestrates a `intake → research → plan → implement → test → verify → security → PR` flow on top of Jira + Bitbucket (Atlassian Cloud), using slash commands inside Claude Code.
+**Handyman is the source repo of an AI dev cycle tool, packaged as a Claude Code plugin (`handyman-devflow`).** The tool orchestrates an `intake → research → plan → implement → test → verify → security → PR` flow using slash commands inside Claude Code. Jira/Linear integration is **optional** — see "Tracker mode vs local-ticket mode" below.
 
 This repo contains the tool's source — not a product application. There is no `apps/web`, no `apps/api`, no Playwright e2e suite. If you came here looking for a Next.js + Nest.js stack, you're in the wrong place.
 
@@ -18,6 +18,26 @@ This repo is both the source of the `handyman-devflow` plugin AND a self-hosted 
 ```
 
 When the plugin is installed, plugin source lives at `${CLAUDE_PLUGIN_ROOT}` (read-only) and node_modules live at `${CLAUDE_PLUGIN_DATA}/node_modules` (symlinked into PLUGIN_ROOT by `scripts/ensure-deps.sh` on SessionStart). Per-repo state — the user's team config and ticket folders — lives at `${CLAUDE_PROJECT_DIR}/.dev-flow/`, created by the `/handyman-devflow:setup` wizard on first run.
+
+## Tracker mode vs local-ticket mode
+
+The `tracker:` block in `.dev-flow/config.yaml` is OPTIONAL. The workflow runs in one of two modes:
+
+- **Tracker mode** — `tracker:` present (type `jira` or `linear`). `/handyman-devflow:start <KEY>` fetches the ticket from MCP; `/handyman-devflow:pr` transitions it and posts a comment with the PR URL. The PR artifact contains `**Jira transition:** <from> → <to> (succeeded)`.
+- **Local-ticket mode** — `tracker:` omitted entirely. `/handyman-devflow:start "<freeform title>"` derives a local ticket id (e.g., `LOCAL-20260518-fix-login-spinner`) from the title slug. Every tracker MCP call is skipped. The PR artifact contains `**Tracker:** (none — local-ticket mode, no transition performed)` and the PR validator accepts it as equivalent provenance.
+
+Slash commands branch on `devflow config get tracker.type 2>/dev/null || echo NONE`. When extending the workflow, prefer that pattern over hardcoding Jira/Atlassian references — keep new functionality tracker-agnostic where possible.
+
+## Workflow design invariant — real-condition verification
+
+The workflow's promise is that **no phase advances on assumption**. Lint passing and unit tests passing are not enough — the artifact must actually run under realistic conditions and produce observable output. This is enforced by:
+
+- A REQUIRED `stack.smoke_test` config block. The smoke command runs the built artifact end-to-end. Project-type templates ship in `templates/config.yaml.example` for web service / web frontend / CLI / library / desktop.
+- A mandatory smoke step inside Phase 4 (implement) before any phase advance.
+- A mandatory `## Smoke` layer inside the Phase 5 test-evidence artifact, enforced by `src/validators/test.ts`.
+- A bounded auto-remediation loop inside Phase 6 (verify): FAIL/UNCLEAR rewinds to `plan-complete`, increments `state.verify_attempts`, appends failing rows to `04-IMPLEMENTATION.md` as remediation hints, and prompts re-running implement. Default cap: `workflow.verify_max_attempts = 3`.
+
+When extending the workflow, every new phase that ships code MUST include a real-condition execution step. There is no `--no-smoke` flag, no "skip on green CI" shortcut, and no "the unit tests cover it" rationale. The smoke step exists precisely because unit tests do not catch the failure modes that matter at integration time.
 
 ## Stack
 - Node 20+ (ESM)

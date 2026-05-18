@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   loadState, writeState, advancePhase, recordError,
+  incrementVerifyAttempt, resetVerifyAttempts,
   ticketDir, statePath, PhaseSchema,
 } from '../src/state.js';
 
@@ -68,5 +69,64 @@ describe('state', () => {
   it('PhaseSchema rejects unknown phases', () => {
     expect(PhaseSchema.safeParse('bogus').success).toBe(false);
     expect(PhaseSchema.safeParse('plan-complete').success).toBe(true);
+  });
+
+  it('verify_attempts defaults to 0 for states written without the field (back-compat)', () => {
+    // Write the JSON directly to simulate a legacy state.json with no verify_attempts.
+    const root2 = mkdtempSync(join(tmpdir(), 'devflow-state-bc-'));
+    try {
+      const dir = ticketDir(root2, 'PROJ-7');
+      const path = statePath(root2, 'PROJ-7');
+      const fs = require('node:fs') as typeof import('node:fs');
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path, JSON.stringify({
+        ticket: 'PROJ-7',
+        branch: 'feature/PROJ-7-x',
+        phase: 'tests-complete',
+        updated_at: new Date().toISOString(),
+        last_error: null,
+      }));
+      const s = loadState(root2, 'PROJ-7');
+      expect(s.verify_attempts).toBe(0);
+    } finally {
+      rmSync(root2, { recursive: true, force: true });
+    }
+  });
+
+  it('incrementVerifyAttempt bumps counter and returns new value', () => {
+    writeState(root, {
+      ticket: 'PROJ-1', branch: 'feature/PROJ-1-x',
+      phase: 'tests-complete',
+      updated_at: new Date().toISOString(), last_error: null,
+      verify_attempts: 0,
+    });
+    expect(incrementVerifyAttempt(root, 'PROJ-1')).toBe(1);
+    expect(incrementVerifyAttempt(root, 'PROJ-1')).toBe(2);
+    expect(loadState(root, 'PROJ-1').verify_attempts).toBe(2);
+  });
+
+  it('resetVerifyAttempts zeros the counter (and is a no-op when already 0)', () => {
+    writeState(root, {
+      ticket: 'PROJ-1', branch: 'feature/PROJ-1-x',
+      phase: 'verified',
+      updated_at: new Date().toISOString(), last_error: null,
+      verify_attempts: 3,
+    });
+    resetVerifyAttempts(root, 'PROJ-1');
+    expect(loadState(root, 'PROJ-1').verify_attempts).toBe(0);
+    // No-op when already 0 — should not throw.
+    resetVerifyAttempts(root, 'PROJ-1');
+    expect(loadState(root, 'PROJ-1').verify_attempts).toBe(0);
+  });
+
+  it('advancePhase preserves verify_attempts (the counter only resets on resetVerifyAttempts)', () => {
+    writeState(root, {
+      ticket: 'PROJ-1', branch: 'feature/PROJ-1-x',
+      phase: 'tests-complete',
+      updated_at: new Date().toISOString(), last_error: null,
+      verify_attempts: 2,
+    });
+    advancePhase(root, 'PROJ-1', 'verified');
+    expect(loadState(root, 'PROJ-1').verify_attempts).toBe(2);
   });
 });

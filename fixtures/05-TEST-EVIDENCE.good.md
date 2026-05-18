@@ -22,3 +22,11 @@ $ pnpm test:e2e
 ```
 Trace: evidence/2026-05-15T14-23-00/trace.zip
 Screenshot: evidence/2026-05-15T14-23-00/login-success.png
+
+## Smoke
+### Result: PASS
+```
+$ pnpm build && curl -fsS http://localhost:3000/
+exit 0, matched "SMOKE OK"
+```
+Evidence: evidence/2026-05-15T14-23-00/smoke.log

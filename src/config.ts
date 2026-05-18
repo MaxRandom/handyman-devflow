@@ -7,6 +7,15 @@ const FrameworkArea = z.object({
   framework: z.string().optional(),
 });
 
+const SmokeTest = z.object({
+  command: z.string().min(1, 'stack.smoke_test.command must be a non-empty shell command — see templates/config.yaml.example for project-type guidance'),
+  expect_exit: z.number().int().default(0),
+  expect_stdout_match: z.string().optional(),
+  timeout_seconds: z.number().int().positive().default(60),
+});
+
+export type SmokeTestConfig = z.infer<typeof SmokeTest>;
+
 export const ConfigSchema = z.object({
   provider: z.object({
     type: z.enum(['bitbucket', 'github', 'gitlab']),
@@ -18,25 +27,33 @@ export const ConfigSchema = z.object({
     default_reviewers: z.array(z.string()).default([]),
     default_labels: z.array(z.string()).default([]),
   }),
+  // Tracker is OPTIONAL. Omit when there is no Jira/Linear ticket — solo work,
+  // experimental scripts, OSS projects without an issue tracker, etc. In that
+  // mode `/handyman-devflow:start` accepts a freeform title; the workflow
+  // generates a local ticket id (slug-based) and skips all MCP calls.
   tracker: z.object({
     type: z.enum(['jira', 'linear']),
     mcp_server: z.string(),
     base_url: z.string().url(),
     project_key: z.string(),
     pr_transition: z.string().default('In Review'),
-  }),
+  }).optional(),
   stack: z.object({
     package_manager: z.enum(['npm', 'pnpm', 'yarn', 'bun']).default('pnpm'),
     test_commands: z.object({
       unit: z.string(),
       integration: z.string().optional(),
-      e2e: z.string(),
+      e2e: z.string().optional(),
       lint: z.string(),
       typecheck: z.string(),
     }),
+    smoke_test: SmokeTest,
     e2e_output_dir: z.string().default('test-results'),
     areas: z.record(z.string(), FrameworkArea),
   }),
+  workflow: z.object({
+    verify_max_attempts: z.number().int().positive().default(3),
+  }).default({ verify_max_attempts: 3 }),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;

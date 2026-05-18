@@ -30,6 +30,10 @@ stack:
     e2e: "yarn e2e"
     lint: "yarn lint"
     typecheck: "yarn typecheck"
+  smoke_test:
+    command: "yarn build && node dist/cli.js --help"
+    expect_exit: 0
+    timeout_seconds: 60
   areas:
     frontend: { path: "apps/web", framework: nextjs }
 `);

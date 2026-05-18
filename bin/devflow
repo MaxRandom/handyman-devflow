@@ -27,11 +27,15 @@ case "$cmd" in
     # devflow config get <dotted.path>
     exec npx tsx "${PLUGIN_ROOT}/src/config-cli.ts" "$@"
     ;;
+  smoke)
+    # devflow smoke <TICKET> [--evidence-dir <dir>] [--label <name>]
+    exec npx tsx "${PLUGIN_ROOT}/src/smoke-runner.ts" "$@"
+    ;;
   state)
-    # devflow state <get|advance|recordError> <TICKET> [args...] — wraps state.ts ops
-    # (Future: implement as a small CLI on top of state.ts. For now, slash commands can use inline `npx tsx -e` for state mutations, but most reads go through `jq` on tickets/<TICKET>/state.json.)
-    echo "devflow state: not yet implemented — use jq on tickets/\$TICKET/state.json or npx tsx inline" >&2
-    exit 64
+    # devflow state get <TICKET> [<field>]
+    # devflow state increment-verify-attempt <TICKET>
+    # devflow state reset-verify-attempts <TICKET>
+    exec npx tsx "${PLUGIN_ROOT}/src/state-cli.ts" "$@"
     ;;
   *)
     cat >&2 <<EOF
@@ -41,6 +45,10 @@ Usage:
   devflow journal <TICKET> <PHASE> <STEP> <STATUS> [details]  # append journal entry
   devflow slug "<text>"                        # slugify a title
   devflow config get <dotted.path>             # read a value from .dev-flow/config.yaml
+  devflow smoke <TICKET> [--evidence-dir <dir>] [--label <name>]  # run real-condition smoke test
+  devflow state get <TICKET> [<field>]         # read state.json (full or single field)
+  devflow state increment-verify-attempt <TICKET>  # bump verify_attempts on judge FAIL/UNCLEAR
+  devflow state reset-verify-attempts <TICKET>     # reset to 0 (after a clean verify PASS)
 EOF
     exit 64
     ;;

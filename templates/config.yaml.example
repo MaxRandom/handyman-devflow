@@ -8,6 +8,11 @@ provider:
   default_reviewers: []
   default_labels: []
 
+# OPTIONAL. Omit this entire block if there is no ticket tracker — solo work,
+# experimental scripts, OSS without an issue tracker. In that mode
+# `/handyman-devflow:start "<freeform title>"` derives a local ticket id from
+# the title slug and skips every MCP call (Jira fetch, Jira transition, Jira
+# comment-on-PR).
 tracker:
   type: jira
   mcp_server: atlassian
@@ -20,14 +25,39 @@ stack:
   test_commands:
     unit: "pnpm test"
     integration: "pnpm test:integration"
-    e2e: "pnpm test:e2e"
+    e2e: "pnpm test:e2e"             # optional — omit if no e2e suite (smoke_test below is the floor)
     lint: "pnpm lint"
     typecheck: "pnpm typecheck"
+
+  # REQUIRED. The smoke test is the workflow's universal real-condition check:
+  # for ANY project type, this command must actually run the built artifact and
+  # produce observable output. It runs at the end of Phase 4 (implement) and as
+  # part of the Phase 5 (test) evidence bundle. There is no "skip" — if you
+  # can't run the thing, you can't ship it.
+  #
+  # Project-type guidance:
+  #   Web service:   "pnpm build && pnpm start &> /tmp/smoke.log & sleep 5 && curl -fsS http://localhost:3000/ && kill %1"
+  #   Web frontend:  "pnpm build && pnpm preview --port 4173 & sleep 5 && curl -fsS http://localhost:4173/ && kill %1"
+  #   CLI script:    "pnpm build && node dist/cli.js --help"
+  #   Library:       "pnpm build && node -e \"require('./dist').default; console.log('imports ok')\""
+  #   Desktop app:   "pnpm build && ./dist/MyApp.app/Contents/MacOS/MyApp --version"
+  smoke_test:
+    command: "pnpm build && node -e \"require('./dist').default; console.log('SMOKE OK')\""
+    expect_exit: 0
+    expect_stdout_match: "SMOKE OK"   # optional regex; if set, must match the smoke command's stdout
+    timeout_seconds: 60
+
   # Where Playwright writes traces + screenshots. Default is Playwright's default ("test-results").
   # Override if your playwright.config.ts sets outputDir to something else.
   e2e_output_dir: "test-results"
+
   areas:
     frontend: { path: "apps/web", framework: nextjs }
     backend:  { path: "apps/api", framework: nestjs }
     services: { path: "services/*" }
     e2e:      { path: "e2e", framework: playwright }
+
+workflow:
+  # Phase 6 (verify) auto-loops back to Phase 4 (implement) when the judge returns FAIL/UNCLEAR.
+  # Set to 1 to disable retries (one shot, then surface to user). Default 3.
+  verify_max_attempts: 3

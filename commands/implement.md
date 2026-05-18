@@ -84,10 +84,35 @@ PLAN_TASK_IDS="$(sed -n -E 's/^### Task ([0-9]+):.*/\1/p' "${CLAUDE_PROJECT_DIR}
 devflow validate implementation "$TICKET"
 ```
 
-If exit 0:
-- Advance state to `implementation-complete`.
-- Commit state.json.
-- Tell user: "Phase 4 complete. Next: /handyman-devflow:test."
-
 If exit != 0:
 - Surface validator output. Most common: a plan task has no commit with the matching `Plan-Task:` trailer.
+- STOP. Do not advance.
+
+### 5. Real-condition smoke test (MANDATORY — never skipped)
+
+Lint + typecheck pass on broken code all the time. The smoke test is the floor:
+it actually runs the built artifact and proves the code does something
+observable. There is no `--no-smoke` flag.
+
+```
+SMOKE_DIR="tickets/$TICKET/evidence/impl-smoke-$(date -u +%Y-%m-%dT%H-%M-%S)"
+devflow smoke "$TICKET" --evidence-dir "$SMOKE_DIR" --label impl-smoke
+SMOKE_EXIT=$?
+```
+
+If `SMOKE_EXIT != 0`:
+- The smoke runner has already written failure evidence to `$SMOKE_DIR/impl-smoke.log` (exit code, stdout, stderr, timeout flag).
+- Append a deviation note to `04-IMPLEMENTATION.md` referencing the evidence path AND the failing condition (exit mismatch / stdout regex / timeout).
+- Set `last_error="smoke failed: <reason>"` in state.json (do NOT advance phase).
+- Commit the evidence + deviation: `git add tickets/$TICKET/evidence/ tickets/$TICKET/04-IMPLEMENTATION.md tickets/$TICKET/state.json && git commit -m "implement: $TICKET smoke failed — see $SMOKE_DIR"`
+- Tell the user: "Phase 4 paused — the artifact does not run cleanly under real conditions. Read `$SMOKE_DIR/impl-smoke.log`, fix, then re-run /handyman-devflow:implement."
+- EXIT. **Do NOT advance state.**
+
+If `SMOKE_EXIT == 0`:
+- Commit the evidence: `git add tickets/$TICKET/evidence/ && (git diff --cached --quiet || git commit -m "implement: $TICKET smoke ok")`
+
+### 6. Advance state
+
+- Advance state to `implementation-complete`.
+- Commit state.json.
+- Tell user: "Phase 4 complete (lint, typecheck, AND smoke all green). Next: /handyman-devflow:test."

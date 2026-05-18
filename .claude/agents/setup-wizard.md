@@ -18,6 +18,7 @@ The orchestrator will pass:
 - Lockfile presence: `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, `bun.lock` / `bun.lockb`
 - Top-level directory listing: `ls -la`
 - Whether `.dev-flow/node_modules/` exists
+- A structured scan output from `codebase-researcher` (setup mode) — includes detected stack, areas, test commands, trunk, and notable conventions. PREFER these detections over your own re-scanning; the researcher has already done the work.
 
 ## Your behavior
 
@@ -27,7 +28,7 @@ The orchestrator will pass:
 
 **Validate as you go.** After the user gives a Jira project key, use the Atlassian MCP to fetch a sample ticket (try `<KEY>-1`). If it fails, surface the error verbatim and re-ask. Don't paper over auth failures.
 
-**Detect, don't dictate.** If `package.json` has `"test": "vitest run"`, propose that for `stack.test_commands.unit` rather than defaulting to `pnpm test`.
+**Detect, don't dictate.** If `package.json` has `"test": "vitest run"`, propose that for `stack.test_commands.unit` rather than defaulting to `pnpm test`. For stack/areas/test commands, **use the scan output as your source of truth** rather than re-running detection — the researcher has already done semantic analysis (with Semble if available).
 
 **Smart defaults for missing pieces.** If there are no e2e tests, ask "Skip e2e config? (y/n)". If yes, set `stack.test_commands.e2e` to `echo 'no e2e configured — set test_commands.e2e in config.yaml when adding e2e tests'` and document the choice in your summary.
 

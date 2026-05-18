@@ -63,4 +63,30 @@ describe('validators/implementation', () => {
     expect(r.ok).toBe(false);
     expect(r.errors.some((e) => /lint/i.test(e))).toBe(true);
   });
+
+  it('fails if typecheckCmd exits non-zero (mirrors lint behavior)', async () => {
+    const git = simpleGit(repo);
+    writeFileSync(join(repo, 'a.txt'), 'a');
+    await git.add('a.txt');
+    await git.commit('feat: PROJ-1 do A\n\nPlan-Task: 1');
+    const r = await validateImplementation({
+      cwd: repo, base: 'develop',
+      planTaskIds: ['1'], lintCmd: 'true', typecheckCmd: 'false',
+    });
+    expect(r.ok).toBe(false);
+    expect(r.errors.some((e) => /typecheck/i.test(e))).toBe(true);
+  });
+
+  it('does not match Plan-Task: 1 against a commit that has Plan-Task: 11 (regression for substring disambiguation)', async () => {
+    const git = simpleGit(repo);
+    writeFileSync(join(repo, 'a.txt'), 'a');
+    await git.add('a.txt');
+    await git.commit('feat: PROJ-1 do task eleven\n\nPlan-Task: 11');
+    const r = await validateImplementation({
+      cwd: repo, base: 'develop',
+      planTaskIds: ['1'], lintCmd: 'true', typecheckCmd: 'true',
+    });
+    expect(r.ok).toBe(false);
+    expect(r.errors.some((e) => /Plan-Task: 1\b/.test(e))).toBe(true);
+  });
 });

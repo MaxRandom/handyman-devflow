@@ -1,11 +1,12 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fail, ok, type ValidatorResult } from '../utils/validator-result.js';
-import { findProjectRoot } from '../utils/project-root.js';
 import { ticketDir } from '../state.js';
+import { findProjectRoot } from '../utils/project-root.js';
 
 interface Row { severity: string; subject: string; status: string; reason: string; }
 
+const ALLOWED_STATUSES = ['open', 'resolved', 'waived'] as const;
 const ROW_RE = /^\|\s*(\w+)\s*\|\s*([^|]+?)\s*\|\s*(\w+)\s*\|\s*([^|]*?)\s*\|/gm;
 
 export function validateSecurity(filePath: string): ValidatorResult {
@@ -18,6 +19,10 @@ export function validateSecurity(filePath: string): ValidatorResult {
     .filter((r) => ['low', 'moderate', 'high', 'critical'].includes(r.severity));
 
   for (const r of rows) {
+    if (!ALLOWED_STATUSES.includes(r.status as typeof ALLOWED_STATUSES[number])) {
+      errors.push(`Row has invalid status (${r.status}) — must be one of ${ALLOWED_STATUSES.join('/')}: ${r.subject}`);
+      continue;
+    }
     if ((r.severity === 'high' || r.severity === 'critical') && r.status === 'open') {
       errors.push(`Open ${r.severity} finding: ${r.subject}`);
     }

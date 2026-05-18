@@ -22,4 +22,11 @@ describe('validators/security', () => {
     expect(r.ok).toBe(false);
     expect(r.errors.some((e) => /reason/i.test(e))).toBe(true);
   });
+
+  it('fails when a row has a typo\'d status (waaived, oepn) instead of silently skipping it', () => {
+    const r = validateSecurity(join(fixtures, '07-SECURITY.typo-status.md'));
+    expect(r.ok).toBe(false);
+    expect(r.errors.some((e) => /invalid status/i.test(e))).toBe(true);
+    expect(r.errors.some((e) => /waaived|oepn/.test(e))).toBe(true);
+  });
 });

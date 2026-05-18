@@ -17,4 +17,19 @@ describe('validators/verify', () => {
     expect(r.ok).toBe(false);
     expect(r.errors.some((e) => /UNCLEAR/.test(e))).toBe(true);
   });
+
+  it('fails when a row has a typo\'d verdict (PASSED, UNKLEAR, etc.) instead of silently skipping it', () => {
+    const r = validateVerify(join(fixtures, '06-VERIFICATION.typo-verdict.md'));
+    expect(r.ok).toBe(false);
+    expect(r.errors.some((e) => /invalid verdict/i.test(e))).toBe(true);
+    expect(r.errors.some((e) => /UNKLEAR|PASSED/.test(e))).toBe(true);
+  });
+
+  it('fails an all-typo\'d table with an "invalid verdict" error, not a "no rows" error', () => {
+    const r = validateVerify(join(fixtures, '06-VERIFICATION.all-typos.md'));
+    expect(r.ok).toBe(false);
+    expect(r.errors.some((e) => /invalid verdict/i.test(e))).toBe(true);
+    // Critically: should NOT report "No verification table rows found" — the rows DID match by shape.
+    expect(r.errors.some((e) => /No verification table rows found/i.test(e))).toBe(false);
+  });
 });

@@ -59,6 +59,19 @@ The setup wizard auto-installs missing system dependencies (`uv` for Semble, `jq
 - **superpowers** (`@claude-plugins-official`, REQUIRED) — provides the `brainstorming`, `test-driven-development`, `verification-before-completion`, `subagent-driven-development`, `writing-plans`, and `systematic-debugging` skills the dev-flow delegates to.
 - **atlassian** (`@claude-plugins-official`, REQUIRED only in tracker mode) — provides the MCP server for Jira + Bitbucket Cloud (OAuth via your existing Atlassian Cloud SSO). Skip if you'll run in local-ticket mode.
 
+## Updating
+
+The marketplace cache is a regular git clone — pulling new commits is enough for most updates. From a clone of this repo:
+
+```bash
+./scripts/reinstall.sh             # fast: git pull the cached marketplace, then /reload-plugins
+./scripts/reinstall.sh --clean     # full: nuke cache + registry entries, re-add + reinstall
+./scripts/reinstall.sh --dry-run   # preview without changing anything
+./scripts/reinstall.sh --help      # docs
+```
+
+The fast path takes ~1 second and only needs `/reload-plugins` in Claude Code afterward. Use `--clean` when the schema changes (e.g., `marketplace.json` owner field added, dependencies declaration removed) or when the install gets stuck in an inconsistent state.
+
 ## System requirements
 
 - Claude Code with plugin support (2026 build)

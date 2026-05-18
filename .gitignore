@@ -1,3 +1,5 @@
-.dev-flow/node_modules/
-.dev-flow/dist/
-.dev-flow/auth/
+node_modules/
+dist/
+auth/
+*.log
+.vitest-cache/

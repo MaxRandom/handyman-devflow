@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "handyman-devflow",
+  "version": "0.1.0",
+  "description": "Jira-driven AI dev cycle for Bitbucket + Atlassian Cloud: intake → research → plan → TDD → test → verify → security → PR. State machine on disk, validators in Node + Zod, atomic per-phase commits.",
+  "author": {
+    "name": "Max Sysenko",
+    "email": "maxsysenko@gmail.com"
+  },
+  "repository": "https://github.com/maxsysenko/handyman-devflow",
+  "license": "MIT",
+  "keywords": ["jira", "bitbucket", "atlassian", "tdd", "dev-cycle", "ai-agents"],
+  "dependencies": [
+    { "name": "superpowers", "version": "*" }
+  ]
+}

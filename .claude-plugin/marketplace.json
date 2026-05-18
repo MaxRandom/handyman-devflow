@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "handyman-marketplace",
+  "description": "Marketplace for handyman-devflow plugin",
+  "plugins": [
+    {
+      "name": "handyman-devflow",
+      "source": "./",
+      "description": "Jira-driven AI dev cycle for Bitbucket + Atlassian Cloud"
+    }
+  ]
+}

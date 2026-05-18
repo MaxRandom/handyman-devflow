@@ -51,17 +51,40 @@ describe('validators/implementation', () => {
     expect(r.ok).toBe(true);
   });
 
-  it('fails if lintCmd exits non-zero', async () => {
+  it('fails if lintCmd exits non-zero AND surfaces the command output (stderr/stdout tail)', async () => {
     const git = simpleGit(repo);
     writeFileSync(join(repo, 'a.txt'), 'a');
     await git.add('a.txt');
     await git.commit('feat: PROJ-1 do A\n\nPlan-Task: 1');
     const r = await validateImplementation({
       cwd: repo, base: 'develop',
-      planTaskIds: ['1'], lintCmd: 'false', typecheckCmd: 'true',
+      planTaskIds: ['1'],
+      lintCmd: 'sh -c "echo ERROR_FROM_LINT_STDERR >&2; echo lint_output_line; exit 7"',
+      typecheckCmd: 'true',
     });
     expect(r.ok).toBe(false);
-    expect(r.errors.some((e) => /lint/i.test(e))).toBe(true);
+    const lintError = r.errors.find((e) => /lint/i.test(e));
+    expect(lintError).toBeDefined();
+    expect(lintError).toMatch(/ERROR_FROM_LINT_STDERR/);
+    expect(lintError).toMatch(/lint_output_line/);
+  });
+
+  it('truncates lint output to last 30 lines and notes the truncation', async () => {
+    const git = simpleGit(repo);
+    writeFileSync(join(repo, 'a.txt'), 'a');
+    await git.add('a.txt');
+    await git.commit('feat: PROJ-1 do A\n\nPlan-Task: 1');
+    // Produce 50 lines of output, then fail.
+    const cmd = "sh -c 'for i in $(seq 1 50); do echo line_$i; done; exit 1'";
+    const r = await validateImplementation({
+      cwd: repo, base: 'develop',
+      planTaskIds: ['1'], lintCmd: cmd, typecheckCmd: 'true',
+    });
+    expect(r.ok).toBe(false);
+    const lintError = r.errors.find((e) => /lint/i.test(e))!;
+    expect(lintError).toMatch(/truncated to last 30 of 50/);
+    expect(lintError).toMatch(/line_50/);   // last line present
+    expect(lintError).not.toMatch(/line_1\b/); // first lines dropped
   });
 
   it('fails if typecheckCmd exits non-zero (mirrors lint behavior)', async () => {

@@ -14,6 +14,22 @@ export interface ImplArgs {
   typecheckCmd: string;
 }
 
+function runCommand(cmd: string, cwd: string): { ok: true } | { ok: false; output: string } {
+  try {
+    execSync(cmd, { cwd, stdio: 'pipe' });
+    return { ok: true };
+  } catch (err: unknown) {
+    const e = err as { stdout?: Buffer; stderr?: Buffer; message?: string };
+    const stdout = e.stdout?.toString('utf8') ?? '';
+    const stderr = e.stderr?.toString('utf8') ?? '';
+    const combined = [stderr.trim(), stdout.trim()].filter(Boolean).join('\n');
+    const lines = combined.split('\n');
+    const tail = lines.length > 30 ? lines.slice(-30) : lines;
+    const trimmedNotice = lines.length > 30 ? `[truncated to last 30 of ${lines.length} lines]\n` : '';
+    return { ok: false, output: trimmedNotice + tail.join('\n') };
+  }
+}
+
 export async function validateImplementation(args: ImplArgs): Promise<ValidatorResult> {
   const errors: string[] = [];
   const git = simpleGit({ baseDir: args.cwd });
@@ -26,15 +42,13 @@ export async function validateImplementation(args: ImplArgs): Promise<ValidatorR
     if (!matched) errors.push(`No commit found with trailer Plan-Task: ${id}`);
   }
 
-  try {
-    execSync(args.lintCmd, { cwd: args.cwd, stdio: 'pipe' });
-  } catch {
-    errors.push(`lint command failed: ${args.lintCmd}`);
+  const lintResult = runCommand(args.lintCmd, args.cwd);
+  if (!lintResult.ok) {
+    errors.push(`lint command failed: ${args.lintCmd}\n${lintResult.output}`);
   }
-  try {
-    execSync(args.typecheckCmd, { cwd: args.cwd, stdio: 'pipe' });
-  } catch {
-    errors.push(`typecheck command failed: ${args.typecheckCmd}`);
+  const typecheckResult = runCommand(args.typecheckCmd, args.cwd);
+  if (!typecheckResult.ok) {
+    errors.push(`typecheck command failed: ${args.typecheckCmd}\n${typecheckResult.output}`);
   }
 
   return errors.length === 0 ? ok() : fail(...errors);

@@ -2,11 +2,16 @@
   "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
   "name": "handyman-marketplace",
   "description": "Marketplace for handyman-devflow plugin",
+  "owner": {
+    "name": "Max Sysenko",
+    "email": "maxsysenko@gmail.com",
+    "url": "https://github.com/MaxRandom"
+  },
   "plugins": [
     {
       "name": "handyman-devflow",
       "source": "./",
-      "description": "Jira-driven AI dev cycle for Bitbucket + Atlassian Cloud"
+      "description": "AI dev cycle: intake → research → plan → implement → test → verify → security → PR. Tracker (Jira/Linear) optional; works in local-ticket mode too."
     }
   ]
 }

@@ -31,7 +31,7 @@ The plugin ships:
 ## Install
 
 ```
-/plugin marketplace add maxsysenko/handyman-devflow
+/plugin marketplace add MaxRandom/handyman-devflow
 /plugin install handyman-devflow@handyman-marketplace
 /reload-plugins
 /handyman-devflow:setup

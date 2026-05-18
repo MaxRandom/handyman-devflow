@@ -13,7 +13,7 @@ This repo contains the tool's source — not a product application. There is no 
 This repo is both the source of the `handyman-devflow` plugin AND a self-hosted marketplace (`.claude-plugin/marketplace.json`). End users install via:
 
 ```
-/plugin marketplace add maxsysenko/handyman-devflow
+/plugin marketplace add MaxRandom/handyman-devflow
 /plugin install handyman-devflow@handyman-marketplace
 ```
 

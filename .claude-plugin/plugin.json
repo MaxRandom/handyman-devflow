@@ -7,7 +7,7 @@
     "name": "Max Sysenko",
     "email": "maxsysenko@gmail.com"
   },
-  "repository": "https://github.com/maxsysenko/handyman-devflow",
+  "repository": "https://github.com/MaxRandom/handyman-devflow",
   "license": "MIT",
   "keywords": ["jira", "bitbucket", "atlassian", "tdd", "dev-cycle", "ai-agents"],
   "dependencies": [

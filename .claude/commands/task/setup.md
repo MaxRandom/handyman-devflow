@@ -16,6 +16,7 @@ Run this once when adopting the dev-flow tool, or when the team's Jira/Bitbucket
 
 - Check if `.dev-flow/` exists. If not, ABORT: "dev-flow not installed. See AGENTS.md."
 - Check if `.dev-flow/node_modules/` exists. If not, prompt: "Dev-flow dependencies not installed. Run `cd .dev-flow && npm install`? (y/n)" — if yes, run it.
+- Check if `uv` is installed (`which uv`). If not, warn: "Semble MCP server requires `uv` — install with `brew install uv` (macOS) or `curl -LsSf https://astral.sh/uv/install.sh | sh` (Linux). Without it, the `codebase-researcher` agent will fall back to Grep-only mode (still works, just costlier)." Do NOT abort — the dev-flow works without Semble.
 - Check if `.dev-flow/config.yaml` exists. If not, treat as "(missing)".
 - Check if `.gitignore` (root) includes `.dev-flow/node_modules/` and `.dev-flow/auth/`. If missing, append them and stage for commit.
 

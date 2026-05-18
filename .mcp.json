@@ -7,6 +7,14 @@
         "mcp-remote",
         "https://mcp.atlassian.com/v1/mcp/authv2"
       ]
+    },
+    "semble": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "semble[mcp]",
+        "semble"
+      ]
     }
   }
 }

@@ -107,6 +107,17 @@ Deterministic event handlers that run on tool/lifecycle events. They run shell c
 
 Each hook has a pure function tested in `.dev-flow/__tests__/hooks/`. The CLI wrapper at the bottom of each hook file reads stdin JSON, calls the function, and exits with the right code. The hooks use `npx tsx` because the dev-flow's source is TypeScript; if you ever switch to plain Node, drop the `npx tsx` wrapper.
 
+### MCP servers (`.mcp.json`)
+
+External tool providers exposed to all agents (subject to each agent's `tools:` allowance).
+
+| Server | What it provides | Used by |
+|---|---|---|
+| `atlassian` | Jira read/write (issues, transitions, comments) + Bitbucket Cloud (branches, PRs, pipelines). Auth: OAuth 2.1 via existing Atlassian Cloud SSO on first call. | `/task:start`, `/task:pr`, `setup-wizard` |
+| `semble` | Semantic code search ([MinishLab/semble](https://github.com/MinishLab/semble)). CPU-only, no API keys. Auto-indexes the current repo. ~98% lower token cost than grep+read for "find similar features" queries. **Prerequisite:** `uv` installed (`brew install uv` or `curl -LsSf https://astral.sh/uv/install.sh \| sh`). | `codebase-researcher` |
+
+To swap providers (e.g., Bitbucket → GitHub), edit `.mcp.json` and the affected slash commands' tool references.
+
 ### How to add a new agent / skill / hook
 
 - **New agent:** drop a `.md` file in `.claude/agents/` with frontmatter (`name`, `description`, `tools`, `model`) and a system prompt body. Spawn it via `subagent_type: <name>` from a slash command or directly from a conversation.

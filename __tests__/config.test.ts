@@ -64,4 +64,18 @@ describe('config', () => {
     expect(ConfigSchema.shape.provider.shape.type.options).toContain('bitbucket');
     expect(ConfigSchema.shape.provider.shape.type.options).toContain('github');
   });
+
+  it('e2e_output_dir defaults to "test-results" when not specified', () => {
+    const cfg = loadConfig(tmpConfig(validYaml));
+    expect(cfg.stack.e2e_output_dir).toBe('test-results');
+  });
+
+  it('e2e_output_dir honors explicit value', () => {
+    const yaml = validYaml.replace(
+      'areas:',
+      'e2e_output_dir: "playwright-out"\n  areas:'
+    );
+    const cfg = loadConfig(tmpConfig(yaml));
+    expect(cfg.stack.e2e_output_dir).toBe('playwright-out');
+  });
 });

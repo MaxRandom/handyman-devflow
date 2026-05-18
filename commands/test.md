@@ -50,11 +50,18 @@ INT_EXIT=${PIPESTATUS[0]}
 
 ### 5. Run e2e tests
 
+Note: this step reads `stack.e2e_output_dir` from config (default `test-results`, Playwright's default). Override in `.dev-flow/config.yaml` if your `playwright.config.ts` sets `outputDir` to something else.
+
 For e2e, configure Playwright to write traces + screenshots into `$EVIDENCE_DIR`:
 ```
 PLAYWRIGHT_TRACES_DIR="$EVIDENCE_DIR" $(devflow config get stack.test_commands.e2e) --trace on --screenshot only-on-failure 2>&1 | tee "$EVIDENCE_DIR/e2e.log"
 E2E_EXIT=${PIPESTATUS[0]}
-mv test-results/* "$EVIDENCE_DIR/" 2>/dev/null || true
+E2E_OUTPUT_DIR="$(devflow config get stack.e2e_output_dir)"
+if [ -d "$E2E_OUTPUT_DIR" ]; then
+  mv "$E2E_OUTPUT_DIR"/* "$EVIDENCE_DIR/" 2>/dev/null || true
+else
+  echo "Note: e2e output dir '$E2E_OUTPUT_DIR' not found — Playwright produced no artifacts, or check your playwright.config.ts outputDir." >&2
+fi
 ```
 
 ### 6. Write `tickets/$TICKET/05-TEST-EVIDENCE.md`

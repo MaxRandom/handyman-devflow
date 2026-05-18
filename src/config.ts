@@ -34,6 +34,7 @@ export const ConfigSchema = z.object({
       lint: z.string(),
       typecheck: z.string(),
     }),
+    e2e_output_dir: z.string().default('test-results'),
     areas: z.record(z.string(), FrameworkArea),
   }),
 });

@@ -23,6 +23,9 @@ stack:
     e2e: "pnpm test:e2e"
     lint: "pnpm lint"
     typecheck: "pnpm typecheck"
+  # Where Playwright writes traces + screenshots. Default is Playwright's default ("test-results").
+  # Override if your playwright.config.ts sets outputDir to something else.
+  e2e_output_dir: "test-results"
   areas:
     frontend: { path: "apps/web", framework: nextjs }
     backend:  { path: "apps/api", framework: nestjs }

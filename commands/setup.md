@@ -14,11 +14,12 @@ Run this once when adopting the `handyman-devflow` plugin, or when the team's Ji
 
 ### 1. Pre-flight: verify plugin dependencies + per-repo state
 
-**a. Verify Superpowers plugin is installed.**
-- Check `${CLAUDE_PLUGIN_ROOT}/../superpowers` exists (`test -d "${CLAUDE_PLUGIN_ROOT}/../superpowers" && echo OK || echo MISSING`). If MISSING, ABORT: "`handyman-devflow` requires the `superpowers` plugin. Install with `/plugin install superpowers@claude-plugins-official` and re-run `/handyman-devflow:setup`."
+**a. Verify Superpowers plugin is installed (REQUIRED, both modes).**
+- Check `${CLAUDE_PLUGIN_ROOT}/../superpowers` exists (`test -d "${CLAUDE_PLUGIN_ROOT}/../superpowers" && echo OK || echo MISSING`). If MISSING, ABORT: "`handyman-devflow` requires the `superpowers` plugin. Install with `/plugin marketplace add claude-plugins-official && /plugin install superpowers@claude-plugins-official`, then re-run `/handyman-devflow:setup`."
 
-**b. Verify Atlassian plugin is installed.**
-- Check `${CLAUDE_PLUGIN_ROOT}/../atlassian` exists (`test -d "${CLAUDE_PLUGIN_ROOT}/../atlassian" && echo OK || echo MISSING`). If MISSING, ABORT: "`handyman-devflow` requires the `atlassian` plugin. Install with `/plugin install atlassian@claude-plugins-official` and re-run."
+**b. Verify Atlassian plugin is installed — REQUIRED ONLY IN TRACKER MODE.**
+- If the existing config has a `tracker:` block, OR the user hasn't run the wizard yet (we don't know which mode they'll pick), check `${CLAUDE_PLUGIN_ROOT}/../atlassian` exists. If MISSING, do NOT abort — instead WARN: "`atlassian` plugin not installed. Required only if you'll configure a Jira/Linear tracker. To install: `/plugin install atlassian@claude-plugins-official`. To skip (local-ticket mode), continue and answer 'n' to the tracker question."
+- If the existing config has NO `tracker:` block (local-ticket mode), skip this check silently.
 
 **c. Ensure per-repo `.dev-flow/` exists in the user's repo.**
 - Check `${CLAUDE_PROJECT_DIR}/.dev-flow/config.yaml`. If missing:
@@ -86,9 +87,18 @@ Skip the wizard. Run validation only:
 
 a. Parse current `config.yaml` via the loader: `npx tsx -e "import {loadConfig} from '${CLAUDE_PLUGIN_ROOT}/src/config.js'; const c = loadConfig('${CLAUDE_PROJECT_DIR}/.dev-flow/config.yaml'); console.log('config.yaml: valid'); console.log(JSON.stringify(c, null, 2));"`
 
-b. Test Jira connectivity via Atlassian MCP `getJiraIssue` with `<project_key>-1`. Report 200 or the error.
+b. **Tracker connectivity — only if a tracker is configured.**
+   ```
+   TRACKER_TYPE="$(devflow config get tracker.type 2>/dev/null || echo NONE)"
+   if [ "$TRACKER_TYPE" != "NONE" ]; then
+     # Test via Atlassian (or Linear) MCP `getJiraIssue` with `<project_key>-1`. Report 200 or the error.
+     echo "Tracker: reachable | unreachable: <error>"
+   else
+     echo "Tracker: (none — local-ticket mode, no connectivity test)"
+   fi
+   ```
 
-c. Print a one-line health summary: ✅ or ❌ for each: config schema, Jira reachable, Bitbucket reachable, default_base exists in `git branch`.
+c. Print a one-line health summary: ✅ or ❌ for each: config schema, tracker reachable (or N/A in local mode), Bitbucket/GitHub reachable, default_base exists in `git branch`.
 
 d. Exit. Do NOT proceed to wizard.
 
@@ -126,10 +136,19 @@ After writing, re-run the `--check` validation flow (Step 4 a-c). Print results.
 
 ### 8. Tell the user what's next
 
-Print:
+Print one of the two messages depending on whether a tracker is configured.
+
+**Tracker configured:**
 ```
 Setup complete. Next steps:
 - Sign in to Atlassian when prompted on first MCP call (browser OAuth).
 - Run `/handyman-devflow:start <TICKET-KEY>` on a real Jira ticket to verify end-to-end.
+- See `${CLAUDE_PLUGIN_ROOT}/templates/PROCESS.md` for the full flow reference.
+```
+
+**No tracker (local-ticket mode):**
+```
+Setup complete (local-ticket mode — no Jira/Linear). Next steps:
+- Run `/handyman-devflow:start "<short freeform title>"` to begin a ticket. The workflow generates a local id from the title slug and skips every MCP call.
 - See `${CLAUDE_PLUGIN_ROOT}/templates/PROCESS.md` for the full flow reference.
 ```

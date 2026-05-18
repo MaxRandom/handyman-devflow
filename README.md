@@ -30,19 +30,30 @@ The plugin ships:
 
 ## Install
 
+This plugin depends on two others that live in the official Claude Code marketplace. Install them first, then handyman-devflow:
+
 ```
+# 1. Add the official marketplace (skip if you already have it).
+/plugin marketplace add claude-plugins-official
+
+# 2. Install the two dependency plugins.
+/plugin install superpowers@claude-plugins-official
+/plugin install atlassian@claude-plugins-official     # only needed if you'll use Jira/Bitbucket
+
+# 3. Add this marketplace and install handyman-devflow.
 /plugin marketplace add MaxRandom/handyman-devflow
 /plugin install handyman-devflow@handyman-marketplace
+
 /reload-plugins
 /handyman-devflow:setup
 ```
 
-The setup wizard auto-installs missing system dependencies (`uv` for Semble, `jq` for state parsing), copies the config template into your repo's `.dev-flow/`, validates Atlassian connectivity, and runs `codebase-researcher` to populate sensible defaults.
+The setup wizard auto-installs missing system dependencies (`uv` for Semble, `jq` for state parsing), copies the config template into your repo's `.dev-flow/`, asks whether you want a ticket tracker (Jira/Linear) or local-ticket mode, asks for a project-type-matched smoke test command, and runs `codebase-researcher` to populate sensible defaults. It re-checks that `superpowers` and `atlassian` (if you opted into a tracker) are installed; if either is missing it surfaces the exact install command.
 
-## Dependencies (auto-installed by plugin)
+## Dependencies (install once, separately)
 
-- **superpowers** — provides the `brainstorming`, `test-driven-development`, `verification-before-completion`, `subagent-driven-development`, `writing-plans`, and `systematic-debugging` skills the dev-flow delegates to
-- **atlassian** — provides the MCP server for Jira + Bitbucket Cloud (OAuth via your existing Atlassian Cloud SSO)
+- **superpowers** (`@claude-plugins-official`, REQUIRED) — provides the `brainstorming`, `test-driven-development`, `verification-before-completion`, `subagent-driven-development`, `writing-plans`, and `systematic-debugging` skills the dev-flow delegates to.
+- **atlassian** (`@claude-plugins-official`, REQUIRED only in tracker mode) — provides the MCP server for Jira + Bitbucket Cloud (OAuth via your existing Atlassian Cloud SSO). Skip if you'll run in local-ticket mode.
 
 ## System requirements
 

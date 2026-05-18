@@ -18,7 +18,7 @@ Determine ticket from current branch: `git branch --show-current` → `$TICKET`.
 ### 1. Capture the diff
 
 ```
-git diff develop...HEAD > /tmp/$TICKET.diff
+git diff "$(devflow config get provider.default_base)...HEAD" > /tmp/$TICKET.diff
 ```
 
 ### 2. Spawn the judge-reviewer subagent

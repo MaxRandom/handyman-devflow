@@ -20,7 +20,7 @@ Determine ticket from current branch: `git branch --show-current` → `$TICKET`.
 ### 1. Detect changed areas
 
 ```
-git diff --name-only develop...HEAD | sort -u
+git diff --name-only "$(devflow config get provider.default_base)...HEAD" | sort -u
 ```
 
 Map each path to an area in `${CLAUDE_PROJECT_DIR}/.dev-flow/config.yaml.stack.areas`. If any path falls under multiple areas, OR if the diff crosses a service boundary, mark "cross-boundary" — this forces the full e2e suite.
@@ -35,7 +35,7 @@ mkdir -p "$EVIDENCE_DIR"
 ### 3. Run unit tests
 
 ```
-pnpm test 2>&1 | tee "$EVIDENCE_DIR/unit.log"
+$(devflow config get stack.test_commands.unit) 2>&1 | tee "$EVIDENCE_DIR/unit.log"
 UNIT_EXIT=${PIPESTATUS[0]}
 ```
 
@@ -43,15 +43,16 @@ UNIT_EXIT=${PIPESTATUS[0]}
 
 If any backend area changed:
 ```
-pnpm test:integration 2>&1 | tee "$EVIDENCE_DIR/integration.log"
+$(devflow config get stack.test_commands.integration) 2>&1 | tee "$EVIDENCE_DIR/integration.log"
 INT_EXIT=${PIPESTATUS[0]}
 ```
+(If `stack.test_commands.integration` is unset in `.dev-flow/config.yaml`, `devflow config get` exits 1 and the integration step is skipped — integration is optional per the validator.)
 
 ### 5. Run e2e tests
 
 For e2e, configure Playwright to write traces + screenshots into `$EVIDENCE_DIR`:
 ```
-PLAYWRIGHT_TRACES_DIR="$EVIDENCE_DIR" pnpm test:e2e --trace on --screenshot only-on-failure 2>&1 | tee "$EVIDENCE_DIR/e2e.log"
+PLAYWRIGHT_TRACES_DIR="$EVIDENCE_DIR" $(devflow config get stack.test_commands.e2e) --trace on --screenshot only-on-failure 2>&1 | tee "$EVIDENCE_DIR/e2e.log"
 E2E_EXIT=${PIPESTATUS[0]}
 mv test-results/* "$EVIDENCE_DIR/" 2>/dev/null || true
 ```

@@ -37,7 +37,7 @@ which semgrep && semgrep --config=auto --json --output=/tmp/$TICKET.semgrep.json
 ### 3. Manual diff review via security-auditor
 
 Use the Agent tool with `subagent_type: security-auditor`. Pass:
-- The diff (`git diff develop...HEAD`)
+- The diff (`git diff "$(devflow config get provider.default_base)...HEAD"`)
 - The output of `pnpm audit --json` from Step 1 (or `npm audit --json` if not pnpm)
 - The output of semgrep from Step 2 if it ran
 

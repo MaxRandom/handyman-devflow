@@ -32,8 +32,8 @@ b. Make the code changes (use Edit/Write tools, follow patterns from `02-RESEARC
 
 c. Run lint + typecheck (commands from `${CLAUDE_PROJECT_DIR}/.dev-flow/config.yaml.stack.test_commands`):
 ```
-pnpm lint
-pnpm typecheck
+$(devflow config get stack.test_commands.lint)
+$(devflow config get stack.test_commands.typecheck)
 ```
 
 If either fails:
@@ -77,9 +77,11 @@ git commit -m "implement: $TICKET task log"
 ### 4. Run validator
 
 ```
-PLAN_TASK_IDS="$(sed -n -E 's/^### Task ([0-9]+):.*/\1/p' tickets/$TICKET/03-PLAN.md | tr '\n' ',')" \
-  LINT_CMD="pnpm lint" TYPECHECK_CMD="pnpm typecheck" BASE_BRANCH="develop" \
-  devflow validate implementation "$TICKET"
+LINT_CMD="$(devflow config get stack.test_commands.lint)" \
+TYPECHECK_CMD="$(devflow config get stack.test_commands.typecheck)" \
+BASE_BRANCH="$(devflow config get provider.default_base)" \
+PLAN_TASK_IDS="$(sed -n -E 's/^### Task ([0-9]+):.*/\1/p' "${CLAUDE_PROJECT_DIR}/tickets/$TICKET/03-PLAN.md" | tr '\n' ',')" \
+devflow validate implementation "$TICKET"
 ```
 
 If exit 0:

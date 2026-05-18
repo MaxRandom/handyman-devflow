@@ -23,6 +23,10 @@ case "$cmd" in
     # devflow slug "<text>"
     exec npx tsx "${PLUGIN_ROOT}/src/utils/slug-cli.ts" "$@"
     ;;
+  config)
+    # devflow config get <dotted.path>
+    exec npx tsx "${PLUGIN_ROOT}/src/config-cli.ts" "$@"
+    ;;
   state)
     # devflow state <get|advance|recordError> <TICKET> [args...] — wraps state.ts ops
     # (Future: implement as a small CLI on top of state.ts. For now, slash commands can use inline `npx tsx -e` for state mutations, but most reads go through `jq` on tickets/<TICKET>/state.json.)
@@ -36,6 +40,7 @@ Usage:
   devflow validate <phase> <TICKET>            # run a phase validator
   devflow journal <TICKET> <PHASE> <STEP> <STATUS> [details]  # append journal entry
   devflow slug "<text>"                        # slugify a title
+  devflow config get <dotted.path>             # read a value from .dev-flow/config.yaml
 EOF
     exit 64
     ;;

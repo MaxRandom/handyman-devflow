@@ -1,0 +1,68 @@
+# handyman-devflow
+
+A Claude Code plugin that runs a structured AI dev cycle on top of Jira + Bitbucket Cloud.
+
+## What it does
+
+Takes a Jira ticket from intake to a Bitbucket PR via 8 gated phases:
+
+1. **Intake** (`/handyman-devflow:start <TICKET>`) — fetch ticket, surface ambiguities, draft requirements, create feature branch
+2. **Research** (`/handyman-devflow:research`) — analyze the codebase against intake's affected areas
+3. **Plan** (`/handyman-devflow:plan`) — produce ordered task list + test plan
+4. **Implement** (`/handyman-devflow:implement`) — execute plan tasks with atomic per-task commits + lint/typecheck
+5. **Test** (`/handyman-devflow:test`) — run unit/integration/e2e, capture evidence bundle (Playwright traces, screenshots)
+6. **Verify** (`/handyman-devflow:verify`) — fresh-context judge subagent reviews against acceptance criteria
+7. **Security** (`/handyman-devflow:security`) — `npm audit` + semgrep + OWASP top-10 diff review
+8. **PR** (`/handyman-devflow:pr`) — push branch, open Bitbucket PR via Atlassian MCP, transition Jira ticket
+
+Plus `/handyman-devflow:status` (read-only state inspection), `/handyman-devflow:reset --to <phase>` (rewind state.phase), and `/handyman-devflow:setup` (one-time configuration wizard).
+
+## Why
+
+Each phase produces a reviewable markdown artifact (`tickets/<TICKET>/01-INTAKE.md` through `08-PR.md`) committed atomically to the feature branch. A state machine on disk (`tickets/<TICKET>/state.json`) and pure-Node validators (Zod-schema'd) refuse to advance phases when artifacts are malformed. The judge gate at Phase 6 spawns a **fresh-context** subagent that sees only the intake + diff + test evidence (not the plan/research/implementation), eliminating the bias toward the implementer's framing.
+
+The plugin ships:
+- 7 named subagents (intake-analyst, codebase-researcher, task-planner, tdd-implementer, judge-reviewer, security-auditor, setup-wizard)
+- 3 reusable skills (judge-gate, owasp-top-10, bitbucket-pr-body) — others (clarifying-questions, tdd-discipline) are delegated to the `superpowers` plugin
+- 3 hooks (auto-journal on Write to tickets/, block-trunk-push, validate-state on Stop)
+- 1 bundled MCP server (Semble — semantic code search)
+- Per-phase validators, state machine, journal, evidence-bundle support
+
+## Install
+
+```
+/plugin marketplace add maxsysenko/handyman-devflow
+/plugin install handyman-devflow@handyman-marketplace
+/reload-plugins
+/handyman-devflow:setup
+```
+
+The setup wizard auto-installs missing system dependencies (`uv` for Semble, `jq` for state parsing), copies the config template into your repo's `.dev-flow/`, validates Atlassian connectivity, and runs `codebase-researcher` to populate sensible defaults.
+
+## Dependencies (auto-installed by plugin)
+
+- **superpowers** — provides the `brainstorming`, `test-driven-development`, `verification-before-completion`, `subagent-driven-development`, `writing-plans`, and `systematic-debugging` skills the dev-flow delegates to
+- **atlassian** — provides the MCP server for Jira + Bitbucket Cloud (OAuth via your existing Atlassian Cloud SSO)
+
+## System requirements
+
+- Claude Code with plugin support (2026 build)
+- Node 20+
+- `uv` (for Semble — optional; agent silently falls back to grep if missing)
+- `jq` (for state parsing in slash commands)
+- macOS or Linux
+
+## Per-repo state vs plugin assets
+
+The plugin ships agents, commands, skills, validators, and hook scripts. Per-repo state lives in your repo at `.dev-flow/config.yaml` (team config) and `.dev-flow/tickets/<TICKET>/` (one folder per ticket, committed to the feature branch). The plugin's setup wizard creates the per-repo `.dev-flow/` on first run.
+
+## Documentation
+
+- `AGENTS.md` — cross-vendor team rules (read by Claude Code, Codex CLI, Cursor, Aider, etc.)
+- `templates/PROCESS.md` — the full flow reference (shipped into your repo)
+- `docs/superpowers/specs/2026-05-15-jira-driven-dev-cycle-design.md` — the design spec
+- `docs/superpowers/plans/2026-05-15-jira-driven-dev-cycle.md` — the original implementation plan
+
+## License
+
+MIT. See `LICENSE`.

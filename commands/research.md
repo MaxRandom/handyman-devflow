@@ -3,7 +3,7 @@ description: "Phase 2 — Research the codebase against the intake's affected ar
 allowed-tools: Bash, Read, Glob, Grep, Write, Edit, Agent
 ---
 
-# /task:research — Phase 2
+# /handyman-devflow:research — Phase 2
 
 Determine ticket from current branch: `git branch --show-current` → extract `<TICKET>` from `feature/<TICKET>-...`. Refer to it as `$TICKET` below.
 
@@ -11,7 +11,7 @@ Determine ticket from current branch: `git branch --show-current` → extract `<
 
 1. `git status --porcelain` → must be empty.
 2. `cat tickets/$TICKET/state.json | jq -r .phase` → must be `intake-complete`. Otherwise ABORT with the next-expected hint.
-3. `cd .dev-flow && npx tsx src/validators/intake.ts $TICKET` → exit code must be 0. Otherwise ABORT with stderr.
+3. `devflow validate intake "$TICKET"` → exit code must be 0. Otherwise ABORT with stderr.
 
 ## Actions
 
@@ -44,20 +44,19 @@ Write `tickets/$TICKET/02-RESEARCH.md`:
 ### 4. Append journal + commit
 
 ```
-cd .dev-flow && npx tsx src/journal-cli.ts $TICKET research analyze ok
-cd ..
+devflow journal "$TICKET" research analyze ok
 git add tickets/$TICKET/02-RESEARCH.md tickets/$TICKET/.journal.jsonl
 git commit -m "research: $TICKET codebase analysis"
 ```
 
 ### 5. Run validator
 
-`cd .dev-flow && npx tsx src/validators/research.ts $TICKET`
+`devflow validate research "$TICKET"`
 
 If exit code 0:
-- Advance state: `cd .dev-flow && npx tsx -e "import {advancePhase} from './src/state.js'; advancePhase('..', '$TICKET', 'research-complete')"`
+- Advance state: `npx tsx -e "import {advancePhase} from '${CLAUDE_PLUGIN_ROOT}/src/state.js'; advancePhase('${CLAUDE_PROJECT_DIR}', '$TICKET', 'research-complete')"`
 - Commit state: `git add tickets/$TICKET/state.json && git commit -m "research: $TICKET signed off"`
-- Tell user: "Phase 2 complete. Next: /task:plan."
+- Tell user: "Phase 2 complete. Next: /handyman-devflow:plan."
 
 If exit code != 0:
 - Tell user the validator output. Common fix: cite real file paths in `## Patterns to follow`.

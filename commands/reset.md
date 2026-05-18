@@ -4,9 +4,9 @@ allowed-tools: Bash, Read, Write
 argument-hint: "--to <phase>"
 ---
 
-# /task:reset
+# /handyman-devflow:reset
 
-Usage: `/task:reset --to <phase>`
+Usage: `/handyman-devflow:reset --to <phase>`
 
 Valid phases: `init`, `intake-complete`, `research-complete`, `plan-complete`, `implementation-complete`, `tests-complete`, `verified`, `security-reviewed`.
 
@@ -17,7 +17,7 @@ Determine ticket from current branch: `git branch --show-current` → `$TICKET`.
 1. Read `tickets/$TICKET/state.json`.
 2. Confirm with the user: "About to rewind state.phase from <current> to <target>. Artifacts will NOT be deleted; you'll just be allowed to re-run from <target>'s next phase. Proceed? (yes/no)"
 3. If yes, update state.phase, set last_error=null, update updated_at.
-4. Append journal entry: `cd .dev-flow && npx tsx src/journal-cli.ts $TICKET reset rewind ok "<from> -> <to>"`
+4. Append journal entry: `devflow journal "$TICKET" reset rewind ok "<from> -> <to>"`
 5. Commit:
 ```
 git add tickets/$TICKET/state.json tickets/$TICKET/.journal.jsonl

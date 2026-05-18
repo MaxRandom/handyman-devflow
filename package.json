@@ -1,5 +1,5 @@
 {
-  "name": "@handyman/dev-flow",
+  "name": "handyman-devflow",
   "version": "0.1.0",
   "private": true,
   "type": "module",

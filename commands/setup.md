@@ -1,48 +1,48 @@
 ---
-description: "One-time setup wizard for the dev-flow tool. Walks through Atlassian + Bitbucket + stack configuration, validates connectivity, writes .dev-flow/config.yaml. Idempotent — safe to re-run. Use --check for verification only."
+description: "One-time setup wizard for the handyman-devflow plugin. Walks through Atlassian + Bitbucket + stack configuration, validates connectivity, writes .dev-flow/config.yaml into the user's repo. Idempotent — safe to re-run. Use --check for verification only."
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Agent, mcp__atlassian__*
 argument-hint: "[--check]"
 ---
 
-# /task:setup
+# /handyman-devflow:setup
 
-Run this once when adopting the dev-flow tool, or when the team's Jira/Bitbucket setup changes. Idempotent — safe to re-run.
+Run this once when adopting the `handyman-devflow` plugin, or when the team's Jira/Bitbucket setup changes. Idempotent — safe to re-run.
 
 `--check` skips the wizard and just validates the existing config + MCP connectivity. Use after changing config by hand.
 
 ## Actions
 
-### 1. Detect + install dependencies (auto)
+### 1. Pre-flight: verify plugin dependencies + per-repo state
 
-This step ensures every dependency the dev-flow needs is present BEFORE the wizard runs. Each install asks confirmation only for system-level changes (Homebrew / curl).
+**a. Verify Superpowers plugin is installed.**
+- Check `${CLAUDE_PLUGIN_ROOT}/../superpowers` exists (`test -d "${CLAUDE_PLUGIN_ROOT}/../superpowers" && echo OK || echo MISSING`). If MISSING, ABORT: "`handyman-devflow` requires the `superpowers` plugin. Install with `/plugin install superpowers@claude-plugins-official` and re-run `/handyman-devflow:setup`."
 
-**a. Verify `.dev-flow/` exists.**
-- Run `test -d .dev-flow && echo OK || echo MISSING`. If MISSING: ABORT with "dev-flow not installed. See AGENTS.md."
+**b. Verify Atlassian plugin is installed.**
+- Check `${CLAUDE_PLUGIN_ROOT}/../atlassian` exists (`test -d "${CLAUDE_PLUGIN_ROOT}/../atlassian" && echo OK || echo MISSING`). If MISSING, ABORT: "`handyman-devflow` requires the `atlassian` plugin. Install with `/plugin install atlassian@claude-plugins-official` and re-run."
 
-**b. Install Node deps (no prompt — local to repo).**
-- Run `test -d .dev-flow/node_modules && echo OK || echo MISSING`.
-- If MISSING: run `cd .dev-flow && npm install` directly. Tell the user "Installing dev-flow Node dependencies..." and surface the output. Don't ask — it's a one-time local install with no side effects outside `.dev-flow/`.
+**c. Ensure per-repo `.dev-flow/` exists in the user's repo.**
+- Check `${CLAUDE_PROJECT_DIR}/.dev-flow/config.yaml`. If missing:
+  - `mkdir -p "${CLAUDE_PROJECT_DIR}/.dev-flow/tickets"`
+  - `cp "${CLAUDE_PLUGIN_ROOT}/templates/config.yaml.example" "${CLAUDE_PROJECT_DIR}/.dev-flow/config.yaml"`
+  - Tell the user: "Created `.dev-flow/config.yaml` from template — the wizard will help you fill in real values."
 
-**c. Check + install `uv` (prompt — system-level).**
+**d. Check + install `uv` (prompt — system-level).**
 - Run `command -v uv && echo OK || echo MISSING`.
-- If MISSING: ask the user "Semble MCP needs `uv` (a fast Python toolchain). Install via Homebrew? (y/n)". 
+- If MISSING: ask the user "Semble MCP needs `uv` (a fast Python toolchain). Install via Homebrew? (y/n)".
 - On `y` and macOS: run `brew install uv`.
 - On `y` and Linux: run `curl -LsSf https://astral.sh/uv/install.sh | sh`.
 - On `n`: warn "`codebase-researcher` will fall back to Grep-only mode. The dev-flow still works." Continue.
 
-**d. Check `jq` (used by every slash command for state.json parsing).**
+**e. Check `jq` (used by every slash command for state.json parsing).**
 - Run `command -v jq && echo OK || echo MISSING`.
 - If MISSING: ask "`jq` is used by slash commands to read state.json. Install via Homebrew? (y/n)". On `y`: `brew install jq` (macOS) or `apt-get install -y jq` (Linux, with `sudo` if needed — confirm). On `n`: warn "slash commands that parse state.json may fail. Install manually before proceeding."
 
-**e. Prime Semble's Python cache (only if `uv` is installed).**
+**f. Prime Semble's Python cache (only if `uv` is installed).**
 - Run `command -v uv >/dev/null && uvx --from "semble[mcp]" semble --help > /dev/null 2>&1 && echo PRIMED || echo SKIPPED`.
 - First invocation downloads the Semble Python wheel (~10-30s). Subsequent uses are instant. Don't ask — it's a cache warm-up.
 
-**f. Ensure `.gitignore` covers dev-flow runtime dirs.**
-- Verify `.gitignore` (root) includes `.dev-flow/node_modules/` and `.dev-flow/auth/`. If either is missing, append (then stage for the eventual config commit).
-
-**g. Print a summary line.**
-- `"Dependencies: Node ✅, uv ✅|⚠️ (skipped), jq ✅|⚠️, Semble cache ✅|⚠️."` The wizard proceeds even if optional deps are missing — they're warnings, not blockers.
+**g. Print pre-flight summary.**
+- `"Plugins: superpowers ✅, atlassian ✅. Per-repo: .dev-flow/ ✅ (created|existing). System deps: uv ✅|⚠️, jq ✅|⚠️. Semble cache ✅|⚠️."` The wizard proceeds even if optional system deps are missing — they're warnings, not blockers. Plugin deps are blockers.
 
 ### 2. Detect repo state
 
@@ -60,14 +60,13 @@ ls -la apps/* 2>/dev/null
 [ -f bun.lock ] && echo "lockfile: bun.lock"
 [ -f bun.lockb ] && echo "lockfile: bun.lockb"
 [ -f package-lock.json ] && echo "lockfile: package-lock.json"
-[ -d .dev-flow/node_modules ] && echo "deps installed: yes" || echo "deps installed: no"
 ```
 
 ### 3. Run codebase-researcher in scan mode
 
 Spawn the `codebase-researcher` subagent in SCAN mode (no intake doc — it's pre-ticket). Pass:
 
-- A note that this is SETUP mode, not Phase 2: "You're characterizing the repo for `/task:setup`. There is no Jira ticket yet. Skip ticket-specific work. Produce a structured stack/areas/test-commands inventory the setup wizard will use to seed defaults."
+- A note that this is SETUP mode, not Phase 2: "You're characterizing the repo for `/handyman-devflow:setup`. There is no Jira ticket yet. Skip ticket-specific work. Produce a structured stack/areas/test-commands inventory the setup wizard will use to seed defaults."
 - Output of `git remote -v`
 - Output of `git branch -l` and `git branch --show-current`
 - Root directory listing: `ls -la`
@@ -85,7 +84,7 @@ If `codebase-researcher` fails (e.g., Semble unavailable AND Grep can't characte
 
 Skip the wizard. Run validation only:
 
-a. Parse current `config.yaml` via the loader: `cd .dev-flow && npx tsx -e "import {loadConfig} from './src/config.js'; const c = loadConfig('config.yaml'); console.log('config.yaml: valid'); console.log(JSON.stringify(c, null, 2));"`
+a. Parse current `config.yaml` via the loader: `npx tsx -e "import {loadConfig} from '${CLAUDE_PLUGIN_ROOT}/src/config.js'; const c = loadConfig('${CLAUDE_PROJECT_DIR}/.dev-flow/config.yaml'); console.log('config.yaml: valid'); console.log(JSON.stringify(c, null, 2));"`
 
 b. Test Jira connectivity via Atlassian MCP `getJiraIssue` with `<project_key>-1`. Report 200 or the error.
 
@@ -105,17 +104,17 @@ The wizard will return:
 
 Show the user the proposed YAML diff against the current config (use `diff` if both exist; otherwise just show the new content).
 
-Ask: "Write this to `.dev-flow/config.yaml`? (y/n)"
+Ask: "Write this to `${CLAUDE_PROJECT_DIR}/.dev-flow/config.yaml`? (y/n)"
 
 If yes:
 - Verify the YAML has zero `[NEEDS-ANSWER]` markers. If any remain, refuse and tell the user to re-run after answering.
-- Validate the YAML parses against the schema: `cd .dev-flow && npx tsx -e "import {loadConfig} from './src/config.js'; ..."` against a temp file. If schema validation fails, refuse and surface the Zod error.
-- Write `.dev-flow/config.yaml`.
+- Validate the YAML parses against the schema: `npx tsx -e "import {loadConfig} from '${CLAUDE_PLUGIN_ROOT}/src/config.js'; loadConfig('<temp-path>')"` against a temp file. If schema validation fails, refuse and surface the Zod error.
+- Write `${CLAUDE_PROJECT_DIR}/.dev-flow/config.yaml`.
 - If `.gitignore` was updated, stage it too.
 - Commit:
   ```
   git add .dev-flow/config.yaml .gitignore 2>/dev/null
-  git commit -m "chore: configure dev-flow for this team (via /task:setup)"
+  git commit -m "chore: configure handyman-devflow for this team (via /handyman-devflow:setup)"
   ```
 
 If no:
@@ -131,6 +130,6 @@ Print:
 ```
 Setup complete. Next steps:
 - Sign in to Atlassian when prompted on first MCP call (browser OAuth).
-- Run `/task:start <TICKET-KEY>` on a real Jira ticket to verify end-to-end.
-- See `.dev-flow/PROCESS.md` for the full flow reference.
+- Run `/handyman-devflow:start <TICKET-KEY>` on a real Jira ticket to verify end-to-end.
+- See `${CLAUDE_PLUGIN_ROOT}/templates/PROCESS.md` for the full flow reference.
 ```

@@ -3,7 +3,7 @@ description: "Phase 3 — Produce ordered task list with acceptance criteria + t
 allowed-tools: Bash, Read, Glob, Grep, Write, Edit, Agent
 ---
 
-# /task:plan — Phase 3
+# /handyman-devflow:plan — Phase 3
 
 Determine ticket from current branch: `git branch --show-current` → extract `$TICKET`.
 
@@ -11,7 +11,7 @@ Determine ticket from current branch: `git branch --show-current` → extract `$
 
 1. `git status --porcelain` empty.
 2. `cat tickets/$TICKET/state.json | jq -r .phase` == `research-complete`.
-3. `cd .dev-flow && npx tsx src/validators/research.ts $TICKET` exit 0.
+3. `devflow validate research "$TICKET"` exit 0.
 
 ## Actions
 
@@ -30,20 +30,19 @@ Capture the agent's return value as the body of `03-PLAN.md`.
 
 ```
 write tickets/$TICKET/03-PLAN.md
-cd .dev-flow && npx tsx src/journal-cli.ts $TICKET plan draft ok
-cd ..
+devflow journal "$TICKET" plan draft ok
 git add tickets/$TICKET/03-PLAN.md tickets/$TICKET/.journal.jsonl
 git commit -m "plan: $TICKET implementation plan"
 ```
 
 ### 3. Run validator
 
-`cd .dev-flow && npx tsx src/validators/plan.ts $TICKET`
+`devflow validate plan "$TICKET"`
 
 If exit 0:
 - Advance state to `plan-complete`.
 - Commit state.json.
-- Tell user: "Phase 3 complete. Next: /task:implement."
+- Tell user: "Phase 3 complete. Next: /handyman-devflow:implement."
 
 If exit != 0:
 - Tell user the issues. Common: missing `**Acceptance criteria:**` per task, or missing `## Test plan`.

@@ -3,7 +3,7 @@ description: "Phase 8 — Push branch, open Bitbucket PR via Atlassian MCP, tran
 allowed-tools: Bash, Read, Write, mcp__atlassian__*
 ---
 
-# /task:pr — Phase 8
+# /handyman-devflow:pr — Phase 8
 
 Determine ticket from current branch: `git branch --show-current` → `$TICKET`.
 
@@ -11,7 +11,7 @@ Determine ticket from current branch: `git branch --show-current` → `$TICKET`.
 
 1. `git status --porcelain` empty.
 2. `cat tickets/$TICKET/state.json | jq -r .phase` == `security-reviewed`.
-3. `cd .dev-flow && npx tsx src/validators/security.ts $TICKET` exit 0.
+3. `devflow validate security "$TICKET"` exit 0.
 
 ## Actions
 
@@ -23,7 +23,7 @@ git push -u origin $(git branch --show-current)
 
 ### 2. Read config for PR settings
 
-Parse `.dev-flow/config.yaml`:
+Parse `${CLAUDE_PROJECT_DIR}/.dev-flow/config.yaml`:
 - `provider.workspace`, `provider.repo`, `provider.default_base`
 - `provider.default_reviewers`, `provider.default_labels`
 - `tracker.pr_transition`
@@ -91,8 +91,7 @@ Call `addCommentToJiraIssue` with body: `PR opened: <PR URL>`.
 ### 7. Commit + push
 
 ```
-cd .dev-flow && npx tsx src/journal-cli.ts $TICKET pr open ok
-cd ..
+devflow journal "$TICKET" pr open ok
 git add tickets/$TICKET/08-PR.md tickets/$TICKET/.journal.jsonl
 git commit -m "pr: $TICKET opened"
 git push
@@ -100,7 +99,7 @@ git push
 
 ### 8. Run validator
 
-`cd .dev-flow && npx tsx src/validators/pr.ts $TICKET`
+`devflow validate pr "$TICKET"`
 
 If exit 0:
 - Advance state to `pr-opened`. Commit + push state.json.

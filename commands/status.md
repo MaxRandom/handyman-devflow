@@ -3,7 +3,7 @@ description: "Show current dev-cycle state for the active ticket. Read-only."
 allowed-tools: Bash, Read
 ---
 
-# /task:status
+# /handyman-devflow:status
 
 Determine ticket from current branch: `git branch --show-current`.
 
@@ -19,14 +19,14 @@ Last error: <state.last_error or "(none)">
 ```
 
 Map `state.phase` to next command:
-- `init` / `intake-drafted` → `/task:start <TICKET>` (continue)
-- `intake-complete` → `/task:research`
-- `research-complete` → `/task:plan`
-- `plan-complete` / `implementation-in-progress` → `/task:implement`
-- `implementation-complete` → `/task:test`
-- `tests-complete` → `/task:verify`
-- `verified` → `/task:security`
-- `security-reviewed` → `/task:pr`
+- `init` / `intake-drafted` → `/handyman-devflow:start <TICKET>` (continue)
+- `intake-complete` → `/handyman-devflow:research`
+- `research-complete` → `/handyman-devflow:plan`
+- `plan-complete` / `implementation-in-progress` → `/handyman-devflow:implement`
+- `implementation-complete` → `/handyman-devflow:test`
+- `tests-complete` → `/handyman-devflow:verify`
+- `verified` → `/handyman-devflow:security`
+- `security-reviewed` → `/handyman-devflow:pr`
 - `pr-opened` → "Done."
 
 Also run the validator for the CURRENT phase (whatever phase we're in, run the predecessor's validator) and print pass/fail to give the user a quick health check.

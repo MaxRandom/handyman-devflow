@@ -4,16 +4,16 @@ allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Agent, mcp__atlassian__*
 argument-hint: "<TICKET>"
 ---
 
-# /task:start — Phase 1 (Intake)
+# /handyman-devflow:start — Phase 1 (Intake)
 
 You are running Phase 1 of the dev cycle for ticket **$1**.
 
-If you are unsure about the overall flow, read `.dev-flow/PROCESS.md`.
+If you are unsure about the overall flow, read `${CLAUDE_PLUGIN_ROOT}/templates/PROCESS.md`.
 
 ## Precondition checks (HARD — abort if any fail)
 
 1. **Working tree must be clean.** Run `git status --porcelain`. If output is non-empty, ABORT and tell the user: "Working tree is not clean — commit or stash before starting a new ticket."
-2. **Ticket folder must not yet exist.** Run `test -d tickets/$1 && echo EXISTS || echo NEW`. If `EXISTS`, also check `cat tickets/$1/state.json | jq -r .phase`. If `phase` is anything other than `init` or `intake-drafted`, ABORT and instruct the user: "Ticket already in progress at phase X — use /task:status."
+2. **Ticket folder must not yet exist.** Run `test -d tickets/$1 && echo EXISTS || echo NEW`. If `EXISTS`, also check `cat tickets/$1/state.json | jq -r .phase`. If `phase` is anything other than `init` or `intake-drafted`, ABORT and instruct the user: "Ticket already in progress at phase X — use /handyman-devflow:status."
 
 ## Actions
 
@@ -29,12 +29,12 @@ Use the Atlassian MCP tool `getJiraIssue` with key=`$1`. Capture:
 
 ### 2. Compute branch name
 
-- Slug = lowercase kebab of the Jira title, max 60 chars. Compute via `cd .dev-flow && npx tsx src/utils/slug-cli.ts "<title>"` (replaces the older `-e` form which had an argv-index bug).
+- Slug = lowercase kebab of the Jira title, max 60 chars. Compute via `devflow slug "<title>"` (replaces the older `-e` form which had an argv-index bug).
 - Branch = `feature/$1-<slug>`.
 
 ### 3. Create feature branch
 
-Read `.dev-flow/config.yaml` for `provider.default_base` (typically `develop`).
+Read `${CLAUDE_PROJECT_DIR}/.dev-flow/config.yaml` for `provider.default_base` (typically `develop`).
 
 Run:
 ```
@@ -85,7 +85,7 @@ Write `tickets/$1/state.json`:
 
 ### 8. Append to journal
 
-Run: `cd .dev-flow && npx tsx src/journal-cli.ts $1 intake draft ok`
+Run: `devflow journal "$1" intake draft ok`
 
 ### 9. Commit atomically
 
@@ -96,18 +96,18 @@ git commit -m "intake: $1 draft requirements + open questions"
 
 ### 10. Run the validator
 
-Run: `cd .dev-flow && npx tsx src/validators/intake.ts $1`
+Run: `devflow validate intake "$1"`
 
 If exit code 0:
 - Update `state.json` to `"phase": "intake-complete"`.
 - Commit: `git add tickets/$1/state.json && git commit -m "intake: $1 requirements signed off"`.
-- Tell the user: "Phase 1 complete. Next: /task:research."
+- Tell the user: "Phase 1 complete. Next: /handyman-devflow:research."
 
 If exit code != 0:
-- Tell the user: "Phase 1 artifact draft saved BUT validator failed: <stderr>. Resolve the issues (typically: answer the [NEEDS-ANSWER] markers in tickets/$1/01-INTAKE.md), then re-run /task:start $1."
+- Tell the user: "Phase 1 artifact draft saved BUT validator failed: <stderr>. Resolve the issues (typically: answer the [NEEDS-ANSWER] markers in tickets/$1/01-INTAKE.md), then re-run /handyman-devflow:start $1."
 
 ## Tips for the user
 
 - To answer [NEEDS-ANSWER] markers: edit the file in place, replacing the marker with the answer.
 - To post questions to Jira instead: ask me to use `addCommentToJiraIssue` with the questions, then paste the PM's reply back.
-- Re-run `/task:start $1` is safe — it's idempotent once the ticket folder exists.
+- Re-run `/handyman-devflow:start $1` is safe — it's idempotent once the ticket folder exists.

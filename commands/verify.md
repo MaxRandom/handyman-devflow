@@ -3,7 +3,7 @@ description: "Phase 6 — Judge gate. Fresh-context subagent verifies acceptance
 allowed-tools: Bash, Read, Write, Agent
 ---
 
-# /task:verify — Phase 6 (Judge Gate)
+# /handyman-devflow:verify — Phase 6 (Judge Gate)
 
 Determine ticket from current branch: `git branch --show-current` → `$TICKET`.
 
@@ -11,7 +11,7 @@ Determine ticket from current branch: `git branch --show-current` → `$TICKET`.
 
 1. `git status --porcelain` empty.
 2. `cat tickets/$TICKET/state.json | jq -r .phase` == `tests-complete`.
-3. `cd .dev-flow && npx tsx src/validators/test.ts $TICKET` exit 0.
+3. `devflow validate test "$TICKET"` exit 0.
 
 ## Actions
 
@@ -49,20 +49,19 @@ Write `tickets/$TICKET/06-VERIFICATION.md`:
 ### 4. Commit
 
 ```
-cd .dev-flow && npx tsx src/journal-cli.ts $TICKET verify judge ok
-cd ..
+devflow journal "$TICKET" verify judge ok
 git add tickets/$TICKET/06-VERIFICATION.md tickets/$TICKET/.journal.jsonl
 git commit -m "verify: $TICKET judge-gate review"
 ```
 
 ### 5. Run validator
 
-`cd .dev-flow && npx tsx src/validators/verify.ts $TICKET`
+`devflow validate verify "$TICKET"`
 
 If exit 0:
 - Advance state to `verified`. Commit state.json.
-- Tell user: "Phase 6 complete. Next: /task:security."
+- Tell user: "Phase 6 complete. Next: /handyman-devflow:security."
 
 If exit != 0 (any FAIL or UNCLEAR row):
 - Surface the failing rows.
-- Tell user: "Address the failing/unclear criteria — usually means going back to /task:implement to add tests or strengthen behavior. Use /task:reset --to plan-complete to rewind."
+- Tell user: "Address the failing/unclear criteria — usually means going back to /handyman-devflow:implement to add tests or strengthen behavior. Use /handyman-devflow:reset --to plan-complete to rewind."

@@ -3,7 +3,7 @@ description: "Phase 5 — Run unit/integration/e2e, capture evidence bundle (Pla
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep
 ---
 
-# /task:test — Phase 5
+# /handyman-devflow:test — Phase 5
 
 > **Shell environment:** all shell commands in this file assume bash with `set -o pipefail`. The harness's Bash tool defaults to bash on macOS and Linux. Run `set -o pipefail` once at the start of any shell block that uses `${PIPESTATUS[*]}`.
 
@@ -13,7 +13,7 @@ Determine ticket from current branch: `git branch --show-current` → `$TICKET`.
 
 1. `git status --porcelain` empty.
 2. `cat tickets/$TICKET/state.json | jq -r .phase` == `implementation-complete`.
-3. `cd .dev-flow && npx tsx src/validators/implementation.ts $TICKET` exit 0.
+3. `devflow validate implementation "$TICKET"` exit 0.
 
 ## Actions
 
@@ -23,7 +23,7 @@ Determine ticket from current branch: `git branch --show-current` → `$TICKET`.
 git diff --name-only develop...HEAD | sort -u
 ```
 
-Map each path to an area in `.dev-flow/config.yaml.stack.areas`. If any path falls under multiple areas, OR if the diff crosses a service boundary, mark "cross-boundary" — this forces the full e2e suite.
+Map each path to an area in `${CLAUDE_PROJECT_DIR}/.dev-flow/config.yaml.stack.areas`. If any path falls under multiple areas, OR if the diff crosses a service boundary, mark "cross-boundary" — this forces the full e2e suite.
 
 ### 2. Create evidence directory
 
@@ -87,19 +87,18 @@ Screenshots: $EVIDENCE_DIR/*.png
 ### 7. Commit
 
 ```
-cd .dev-flow && npx tsx src/journal-cli.ts $TICKET test capture ok
-cd ..
+devflow journal "$TICKET" test capture ok
 git add tickets/$TICKET/05-TEST-EVIDENCE.md tickets/$TICKET/evidence/ tickets/$TICKET/.journal.jsonl
 git commit -m "test: $TICKET evidence bundle"
 ```
 
 ### 8. Run validator
 
-`cd .dev-flow && npx tsx src/validators/test.ts $TICKET`
+`devflow validate test "$TICKET"`
 
 If exit 0:
 - Advance state to `tests-complete`. Commit state.json.
-- Tell user: "Phase 5 complete. Next: /task:verify."
+- Tell user: "Phase 5 complete. Next: /handyman-devflow:verify."
 
 If exit != 0:
-- Surface validator output. Common: a layer is FAIL — fix the test, re-run /task:test.
+- Surface validator output. Common: a layer is FAIL — fix the test, re-run /handyman-devflow:test.

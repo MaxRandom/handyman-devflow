@@ -3,7 +3,7 @@ description: "Phase 7 — Security review (npm audit + semgrep + manual diff sca
 allowed-tools: Bash, Read, Write, Glob, Grep, Agent
 ---
 
-# /task:security — Phase 7
+# /handyman-devflow:security — Phase 7
 
 > **Shell environment:** all shell commands assume bash. Run `set -o pipefail` if combining commands.
 
@@ -13,7 +13,7 @@ Determine ticket from current branch: `git branch --show-current` → `$TICKET`.
 
 1. `git status --porcelain` empty.
 2. `cat tickets/$TICKET/state.json | jq -r .phase` == `verified`.
-3. `cd .dev-flow && npx tsx src/validators/verify.ts $TICKET` exit 0.
+3. `devflow validate verify "$TICKET"` exit 0.
 
 ## Actions
 
@@ -80,19 +80,18 @@ The validator REFUSES to advance if any `open` high/critical remains, or if any 
 ### 6. Commit
 
 ```
-cd .dev-flow && npx tsx src/journal-cli.ts $TICKET security review ok
-cd ..
+devflow journal "$TICKET" security review ok
 git add tickets/$TICKET/07-SECURITY.md tickets/$TICKET/.journal.jsonl
 git commit -m "security: $TICKET review (<N> findings, <M> waived)"
 ```
 
 ### 7. Run validator
 
-`cd .dev-flow && npx tsx src/validators/security.ts $TICKET`
+`devflow validate security "$TICKET"`
 
 If exit 0:
 - Advance state to `security-reviewed`. Commit state.json.
-- Tell user: "Phase 7 complete. Next: /task:pr."
+- Tell user: "Phase 7 complete. Next: /handyman-devflow:pr."
 
 If exit != 0:
 - Surface findings. Resolve or waive each, then re-run.

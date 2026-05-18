@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# bin/devflow — wrapper for handyman-devflow plugin's Node CLI tools.
+# Invokes plugin-shipped tsx scripts from any cwd.
+set -euo pipefail
+
+PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:?CLAUDE_PLUGIN_ROOT not set — is this running inside Claude Code with the plugin installed?}"
+
+cmd="${1:-}"
+shift || true
+
+case "$cmd" in
+  validate)
+    # devflow validate <phase> <TICKET>
+    phase="${1:?Usage: devflow validate <phase> <TICKET>}"
+    ticket="${2:?Usage: devflow validate <phase> <TICKET>}"
+    exec npx tsx "${PLUGIN_ROOT}/src/validators/${phase}.ts" "${ticket}"
+    ;;
+  journal)
+    # devflow journal <TICKET> <PHASE> <STEP> <STATUS> [details]
+    exec npx tsx "${PLUGIN_ROOT}/src/journal-cli.ts" "$@"
+    ;;
+  slug)
+    # devflow slug "<text>"
+    exec npx tsx "${PLUGIN_ROOT}/src/utils/slug-cli.ts" "$@"
+    ;;
+  state)
+    # devflow state <get|advance|recordError> <TICKET> [args...] — wraps state.ts ops
+    # (Future: implement as a small CLI on top of state.ts. For now, slash commands can use inline `npx tsx -e` for state mutations, but most reads go through `jq` on tickets/<TICKET>/state.json.)
+    echo "devflow state: not yet implemented — use jq on tickets/\$TICKET/state.json or npx tsx inline" >&2
+    exit 64
+    ;;
+  *)
+    cat >&2 <<EOF
+devflow: handyman-devflow plugin CLI wrapper
+Usage:
+  devflow validate <phase> <TICKET>            # run a phase validator
+  devflow journal <TICKET> <PHASE> <STEP> <STATUS> [details]  # append journal entry
+  devflow slug "<text>"                        # slugify a title
+EOF
+    exit 64
+    ;;
+esac

@@ -31,6 +31,10 @@ case "$cmd" in
     # devflow smoke <TICKET> [--evidence-dir <dir>] [--label <name>]
     exec npx tsx "${PLUGIN_ROOT}/src/smoke-runner.ts" "$@"
     ;;
+  auto)
+    # devflow auto next <TICKET>  →  RUN:<cmd> | DONE | BLOCKED:<reason>
+    exec npx tsx "${PLUGIN_ROOT}/src/auto-cli.ts" "$@"
+    ;;
   state)
     # devflow state get <TICKET> [<field>]
     # devflow state increment-verify-attempt <TICKET>
@@ -46,6 +50,7 @@ Usage:
   devflow slug "<text>"                        # slugify a title
   devflow config get <dotted.path>             # read a value from .dev-flow/config.yaml
   devflow smoke <TICKET> [--evidence-dir <dir>] [--label <name>]  # run real-condition smoke test
+  devflow auto next <TICKET>                   # autopilot: print next phase command, DONE, or BLOCKED:<reason>
   devflow state get <TICKET> [<field>]         # read state.json (full or single field)
   devflow state increment-verify-attempt <TICKET>  # bump verify_attempts on judge FAIL/UNCLEAR
   devflow state reset-verify-attempts <TICKET>     # reset to 0 (after a clean verify PASS)

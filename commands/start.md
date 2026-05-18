@@ -1,68 +1,71 @@
 ---
-description: "Phase 1 — Intake. With a tracker configured: fetch the Jira ticket. Without one: take a freeform title and derive a local ticket id."
-allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Agent, mcp__atlassian__*
-argument-hint: "<TICKET-KEY-or-freeform-title>"
+description: "Phase 1 (Intake) + autopilot — chains through research → plan → implement → test → verify → security → PR by default. Pass --manual to stop after intake."
+allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Agent, SlashCommand, mcp__atlassian__*
+argument-hint: "<TICKET-KEY-or-freeform-title> [--manual] | (no args = resume current ticket)"
 ---
 
-# /handyman-devflow:start — Phase 1 (Intake)
+# /handyman-devflow:start — Phase 1 (Intake) + autopilot
 
-You are running Phase 1 of the dev cycle. The argument `$1` is either:
-- A tracker ticket key (e.g., `PROJ-123`) — when `tracker` is configured in `.dev-flow/config.yaml`.
-- A freeform title (e.g., `"fix login button spinner"`) — when `tracker` is absent. The workflow runs in **local-ticket mode**.
+This command is BOTH:
+1. The entry point for a new ticket — pass a Jira key (tracker mode) or freeform title (local-ticket mode).
+2. The resume point for an in-progress ticket — call with no argument and the autopilot picks up from `state.json`.
+
+By default it chains every phase (`research → plan → implement → test → verify → security → pr`) until a blocker or completion. Set `workflow.autopilot: false` in `.dev-flow/config.yaml` for the legacy per-phase manual flow, or pass `--manual` for a one-off stop after Phase 1.
 
 If you are unsure about the overall flow, read `${CLAUDE_PLUGIN_ROOT}/templates/PROCESS.md`.
 
-## Step 0. Detect tracker mode
+## Step 0. Parse args + detect mode
 
 ```
+ARG="$1"
+MANUAL_FLAG=false
+for a in "$@"; do [ "$a" = "--manual" ] && MANUAL_FLAG=true; done
+
 TRACKER_TYPE="$(devflow config get tracker.type 2>/dev/null || echo NONE)"
+AUTOPILOT_CFG="$(devflow config get workflow.autopilot 2>/dev/null || echo true)"
+[ "$MANUAL_FLAG" = "true" ] && AUTOPILOT_CFG=false
 ```
 
-- `TRACKER_TYPE != NONE` → **Tracker mode**: `$1` is the ticket key. `$TICKET=$1`.
-- `TRACKER_TYPE == NONE` → **Local-ticket mode**: `$1` is the freeform title.
-  Derive `$TICKET` from the title:
+**Resume vs new-ticket detection:**
+- If `$ARG` is empty: read TICKET from current branch (`git branch --show-current`). The autopilot resumes from state.json.
+- If `$ARG` is set AND `tickets/$ARG/state.json` exists (tracker mode) OR a ticket folder matching the derived id exists (local mode): warn "ticket exists at phase X — resuming" and set TICKET accordingly. Skip Step 1 (intake) and jump to Step 11 (autopilot drive).
+- If `$ARG` is set AND no existing ticket: this is a NEW ticket.
+
+For NEW ticket:
+- **Tracker mode** (`TRACKER_TYPE != NONE`): `TICKET=$ARG`.
+- **Local-ticket mode** (`TRACKER_TYPE == NONE`):
   ```
-  TITLE_SLUG="$(devflow slug "$1")"
+  TITLE_SLUG="$(devflow slug "$ARG")"
   TICKET="LOCAL-$(date -u +%Y%m%d)-$TITLE_SLUG"
   ```
-  Cap to 60 chars total. This becomes both the ticket folder name AND the slug used in the branch.
 
-## Precondition checks (HARD — abort if any fail)
+## Precondition checks (HARD — abort if any fail) — NEW ticket only
 
 1. **Working tree must be clean.** Run `git status --porcelain`. If output is non-empty, ABORT and tell the user: "Working tree is not clean — commit or stash before starting a new ticket."
-2. **Ticket folder must not yet exist.** Run `test -d tickets/$TICKET && echo EXISTS || echo NEW`. If `EXISTS`, also check `cat tickets/$TICKET/state.json | jq -r .phase`. If `phase` is anything other than `init` or `intake-drafted`, ABORT and instruct the user: "Ticket already in progress at phase X — use /handyman-devflow:status."
+2. **Ticket folder must not yet exist** (only checked when `$ARG` was treated as new). If `tickets/$TICKET/state.json` exists, instead treat this as a RESUME (jump to Step 11).
 
-## Actions
+## Phase-1 actions (skip these when resuming)
 
 ### 1. Source the ticket text
 
-**Tracker mode:** use the Atlassian (or Linear) MCP tool `getJiraIssue` with key=`$TICKET`. Capture:
-- Title
-- Description
-- Acceptance criteria (often in the description or a custom field)
-- Labels
-- Status
-- Comments
+**Tracker mode:** use the Atlassian (or Linear) MCP tool `getJiraIssue` with key=`$TICKET`. Capture: Title, Description, Acceptance criteria, Labels, Status, Comments.
 
-**Local-ticket mode:** the user-supplied `$1` is the title. Source the body from one of:
+**Local-ticket mode:** the user-supplied `$ARG` is the title. Source the body from one of:
 - The user's argument itself (if it contains enough context to write an intake).
 - An inline prompt to the user: "Local-ticket mode — paste the requirements / acceptance criteria / context for this work, or press Enter to proceed with just the title."
 
-Skip every MCP call in this mode. Treat the `getJiraIssue` step as a no-op.
+Skip every MCP call in this mode.
 
 ### 2. Compute branch name
 
 - Slug = lowercase kebab of the title, max 60 chars. Compute via `devflow slug "<title>"`.
-- Branch = expand the `provider.branch_pattern` (default `feature/{ticket}-{slug}`). Both modes work with the default pattern — local-ticket mode just expands `{ticket}` to e.g. `LOCAL-20260518-fix-login-button`.
+- Branch = expand `provider.branch_pattern` (default `feature/{ticket}-{slug}`).
 
 ### 3. Create feature branch
 
-Read `${CLAUDE_PROJECT_DIR}/.dev-flow/config.yaml` for `provider.default_base` (typically `develop` or `main`).
-
-Run:
 ```
 git fetch origin
-git checkout -b feature/$TICKET-<slug> origin/<default_base>
+git checkout -b feature/$TICKET-<slug> origin/$(devflow config get provider.default_base)
 ```
 
 ### 4. Build a lightweight codebase map
@@ -74,14 +77,12 @@ git checkout -b feature/$TICKET-<slug> origin/<default_base>
 ### 5. Spawn the intake-analyst subagent
 
 Use the Agent tool with `subagent_type: intake-analyst`. Pass:
-- The ticket text (title, description, acceptance criteria, comments) — from MCP in tracker mode, from the user's input in local-ticket mode.
-- A flag/note indicating which mode is active.
-- The codebase map from Step 4 (paths + recent commits + keyword grep results).
+- The ticket text (from MCP in tracker mode, from the user in local-ticket mode).
+- A mode indicator (`tracker` or `local`).
+- The codebase map from Step 4.
 - The contents of `AGENTS.md`.
 
-The agent's system prompt handles both modes and produces the same three-section output (`Understood requirements` / `Open questions` / `Affected areas`).
-
-Capture the agent's return value as the body of `01-INTAKE.md` (Step 6).
+Capture the agent's return value as the body of `01-INTAKE.md`.
 
 ### 6. Write the artifact
 
@@ -90,14 +91,12 @@ Write `tickets/$TICKET/01-INTAKE.md`:
 ```markdown
 # Intake — $TICKET
 
-Source: <Jira PROJ-123 | local-ticket "fix login button">
+Source: <Jira PROJ-123 | local-ticket "fix login spinner">
 
 <intake subagent output>
 ```
 
 ### 7. Write initial state.json
-
-Write `tickets/$TICKET/state.json`:
 
 ```json
 {
@@ -110,32 +109,78 @@ Write `tickets/$TICKET/state.json`:
 }
 ```
 
-### 8. Append to journal
-
-Run: `devflow journal "$TICKET" intake draft ok`
-
-### 9. Commit atomically
+### 8. Journal + commit
 
 ```
+devflow journal "$TICKET" intake draft ok
 git add tickets/$TICKET/
 git commit -m "intake: $TICKET draft requirements + open questions"
 ```
 
-### 10. Run the validator
+### 9. Run the intake validator
 
-Run: `devflow validate intake "$TICKET"`
+```
+devflow validate intake "$TICKET"
+INTAKE_EXIT=$?
+```
 
-If exit code 0:
-- Update `state.json` to `"phase": "intake-complete"`.
+If `INTAKE_EXIT == 0`:
+- Update state.json to `"phase": "intake-complete"`.
 - Commit: `git add tickets/$TICKET/state.json && git commit -m "intake: $TICKET requirements signed off"`.
-- Tell the user: "Phase 1 complete. Next: /handyman-devflow:research."
+- Proceed to Step 11 (autopilot drive).
 
-If exit code != 0:
-- Tell the user: "Phase 1 artifact draft saved BUT validator failed: <stderr>. Resolve the issues (typically: answer the [NEEDS-ANSWER] markers in tickets/$TICKET/01-INTAKE.md), then re-run /handyman-devflow:start $1."
+If `INTAKE_EXIT != 0`:
+- The artifact has `[NEEDS-ANSWER]` markers or missing sections.
+- Tell the user: "Phase 1 paused — answer the [NEEDS-ANSWER] markers in `tickets/$TICKET/01-INTAKE.md`, then re-run `/handyman-devflow:start` (no args) to resume."
+- STOP. (The autopilot can't proceed past intake without a clean validator.)
+
+## Step 11. Autopilot drive (the default)
+
+If `AUTOPILOT_CFG != true`:
+- Print "Phase 1 complete. Autopilot off — next: /handyman-devflow:research."
+- STOP.
+
+Otherwise enter the drive loop. Each iteration:
+
+```
+DECISION="$(devflow auto next "$TICKET")"
+case "$DECISION" in
+  DONE)
+    echo "✅ Cycle complete — PR opened. See tickets/$TICKET/08-PR.md."
+    exit
+    ;;
+  BLOCKED:*)
+    REASON="${DECISION#BLOCKED:}"
+    echo "⏸  Autopilot paused: $REASON"
+    echo "    See tickets/$TICKET/ for current artifacts and state.json."
+    echo "    Resolve the blocker, then re-run /handyman-devflow:start (no args) to resume."
+    exit
+    ;;
+  RUN:*)
+    NEXT="${DECISION#RUN:}"
+    # NEXT is one of: research | plan | implement | test | verify | security | pr
+    # Invoke the corresponding slash command using the SlashCommand tool:
+    #   /handyman-devflow:$NEXT
+    # Wait for it to complete before re-reading the decision.
+    ;;
+esac
+```
+
+**How to invoke the next phase:** use the SlashCommand tool to call `/handyman-devflow:<NEXT>`. Each per-phase command does its own work, advances state.json, commits, and exits. Control returns here and the loop re-evaluates.
+
+**Blockers the autopilot will surface:**
+- `intake-drafted` with `[NEEDS-ANSWER]` markers → human answers, re-run /start
+- Smoke test failed in `/implement` → `state.last_error = "smoke failed: ..."`, the user fixes the artifact and re-runs /start
+- Verify max attempts exhausted → `last_error = "verify exhausted N attempts"`, state stays at `tests-complete`
+- Security finding `Status: open` → validator fails the security phase, last_error set
+- Any phase validator returns non-zero → last_error set
+- Working tree dirty mid-flow (rare — slash commands enforce clean trees as preconditions)
+
+**Loop safety:** every per-phase command either advances state (forward progress) OR sets `last_error` (blocker). The loop terminates in O(N) iterations under healthy conditions, or earlier on a blocker. There is no scenario where it spins forever because `last_error != null` is itself a blocker.
 
 ## Tips for the user
 
-- To answer `[NEEDS-ANSWER]` markers: edit the file in place, replacing the marker with the answer.
-- **Tracker mode:** to post questions to Jira instead, ask me to use `addCommentToJiraIssue` with the questions, then paste the PM's reply back.
-- **Local-ticket mode:** there is no PM — just edit the markers directly with the answers you choose.
-- Re-running `/handyman-devflow:start` with the same argument is safe — it's idempotent once the ticket folder exists.
+- To answer `[NEEDS-ANSWER]` markers: edit `01-INTAKE.md` in place, replacing the marker with the answer, then re-run `/handyman-devflow:start` (no args) to resume the autopilot.
+- To recover from a blocker (e.g., smoke failure): inspect the evidence file the blocker mentions, fix the code, re-run `/handyman-devflow:start` (no args). The autopilot will pick up from the current state.
+- To run a single phase manually (e.g., re-run `/test` after a flake): invoke that phase command directly. The autopilot will continue chaining from the new state on the next `/start` invocation.
+- To disable chaining permanently: set `workflow.autopilot: false` in `.dev-flow/config.yaml`. To disable for one run: pass `--manual`.

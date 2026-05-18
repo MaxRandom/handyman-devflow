@@ -61,3 +61,12 @@ workflow:
   # Phase 6 (verify) auto-loops back to Phase 4 (implement) when the judge returns FAIL/UNCLEAR.
   # Set to 1 to disable retries (one shot, then surface to user). Default 3.
   verify_max_attempts: 3
+
+  # When true (default), `/handyman-devflow:start` chains every phase
+  # (research → plan → implement → test → verify → security → pr) and pauses
+  # ONLY on a blocker (validator failure, smoke failure, verify cap exhausted,
+  # security finding, intake [NEEDS-ANSWER] markers). Set to false to recover
+  # the legacy manual flow where you invoke each /handyman-devflow:<phase>
+  # command by hand. You can also pass `--manual` to /start for a one-shot
+  # opt-out without editing the config.
+  autopilot: true

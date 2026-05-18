@@ -53,7 +53,14 @@ export const ConfigSchema = z.object({
   }),
   workflow: z.object({
     verify_max_attempts: z.number().int().positive().default(3),
-  }).default({ verify_max_attempts: 3 }),
+    // When true (the default), `/handyman-devflow:start` runs the WHOLE flow:
+    // it executes Phase 1, then chains through research → plan → implement →
+    // test → verify → security → PR, stopping only on a blocker (validator
+    // failure, smoke failure, verify-loop exhaustion, security finding, or
+    // open [NEEDS-ANSWER] markers requiring human input). Set to false to
+    // recover the legacy per-phase manual flow.
+    autopilot: z.boolean().default(true),
+  }).default({ verify_max_attempts: 3, autopilot: true }),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;

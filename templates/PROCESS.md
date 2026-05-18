@@ -9,6 +9,33 @@ The workflow supports two modes, switched by whether `.dev-flow/config.yaml` con
 
 All other phases (research, plan, implement, test, verify, security) behave identically in both modes.
 
+## Autopilot (default)
+
+`workflow.autopilot: true` (the default) makes `/handyman-devflow:start` chain every phase end-to-end:
+
+```
+/handyman-devflow:start PROJ-123        # tracker mode
+/handyman-devflow:start "fix login spinner"   # local-ticket mode
+/handyman-devflow:start                 # resume current ticket from state.json
+```
+
+Internally the start command's outer loop calls `devflow auto next <TICKET>` between phases. That returns one of:
+
+- `RUN:<phase>` — invoke `/handyman-devflow:<phase>` next (research → plan → implement → test → verify → security → pr)
+- `DONE` — `state.phase` is `pr-opened`; cycle complete
+- `BLOCKED:<reason>` — autopilot paused, human input required
+
+**Blockers that pause the autopilot:**
+- Intake validator fails (`[NEEDS-ANSWER]` markers present, missing sections)
+- Phase 4 smoke failed (`state.last_error = "smoke failed: ..."`)
+- Phase 6 verify exhausted `workflow.verify_max_attempts` retries
+- Phase 7 security found `Status: open` findings
+- Any phase validator returns non-zero
+
+The verify *inner* loop (FAIL/UNCLEAR → rewind to plan-complete → retry implement → test → verify) does NOT trip the autopilot blocker — it sets `last_error = null` and lets the outer drive re-run the phases until either PASS or the cap exhausts.
+
+To opt out: set `workflow.autopilot: false` in `.dev-flow/config.yaml`, or pass `--manual` to `/start` for a one-shot stop after Phase 1.
+
 ## Phase order
 1. **Intake** (`/task:start <TICKET-KEY-or-freeform-title>`) — fetch ticket (tracker mode) OR derive local id from title (local-ticket mode), draft requirements, surface open questions, create feature branch.
 2. **Research** (`/task:research`) — analyze codebase, document patterns to follow.

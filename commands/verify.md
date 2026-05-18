@@ -94,9 +94,13 @@ b. Rewind phase to `plan-complete` (keeping the artifacts in place — the
 
    ```
    # NB: we deliberately do NOT use /handyman-devflow:reset here because that
-   # would clear the verify_attempts counter. Mutate the phase field directly:
+   # would clear the verify_attempts counter. Mutate the phase field directly.
+   # IMPORTANT: we set last_error to NULL on the inner loop so the autopilot
+   # keeps driving (last_error is reserved for hard blockers requiring human
+   # input — verify retries are NOT a hard blocker). The remediation context
+   # lives in 04-IMPLEMENTATION.md, where /implement reads it on the retry.
    tmpfile=$(mktemp)
-   jq '.phase = "plan-complete" | .last_error = "verify FAIL on attempt '"$ATTEMPTS"' — see 04-IMPLEMENTATION.md remediation block" | .updated_at = (now | todateiso8601)' \
+   jq '.phase = "plan-complete" | .last_error = null | .updated_at = (now | todateiso8601)' \
      "tickets/$TICKET/state.json" > "$tmpfile" && mv "$tmpfile" "tickets/$TICKET/state.json"
    ```
 
@@ -110,11 +114,18 @@ d. Tell the user: "Verify attempt $ATTEMPTS of $MAX failed. Auto-looping back to
 
 **If `ATTEMPTS >= MAX`** — stop the loop, hand off to the human:
 
-a. Tell the user: "Verify has failed $ATTEMPTS times — exceeding workflow.verify_max_attempts ($MAX). The auto-remediation loop is exhausted. Read tickets/$TICKET/06-VERIFICATION.md for the latest judge verdict. Either: (1) fix the acceptance criteria with /handyman-devflow:reset --to plan-complete and edit 03-PLAN.md, or (2) raise workflow.verify_max_attempts in .dev-flow/config.yaml and re-run /handyman-devflow:verify."
+a. Tell the user: "Verify has failed $ATTEMPTS times — exceeding workflow.verify_max_attempts ($MAX). The auto-remediation loop is exhausted. Read tickets/$TICKET/06-VERIFICATION.md for the latest judge verdict. Either: (1) fix the acceptance criteria with /handyman-devflow:reset --to plan-complete and edit 03-PLAN.md, or (2) raise workflow.verify_max_attempts in .dev-flow/config.yaml and re-run /handyman-devflow:start (no args) to resume."
 
-b. Do NOT auto-rewind phase. Leave state at `tests-complete` with `last_error` set so the user has full context.
+b. Set `last_error` on state.json to surface the blocker to the autopilot (this is what makes the outer drive loop in /start stop):
 
-c. Commit nothing further (the verification artifact is already committed in step 4).
+   ```
+   tmpfile=$(mktemp)
+   jq '.last_error = "verify exhausted '"$ATTEMPTS"' attempts (cap = '"$MAX"') — see 06-VERIFICATION.md" | .updated_at = (now | todateiso8601)' \
+     "tickets/$TICKET/state.json" > "$tmpfile" && mv "$tmpfile" "tickets/$TICKET/state.json"
+   git add tickets/$TICKET/state.json && git commit -m "verify: $TICKET autopilot blocker — retry cap reached"
+   ```
+
+c. Phase stays at `tests-complete` (not rewound this time — the user must intervene before re-trying).
 
 ## Why this loops
 

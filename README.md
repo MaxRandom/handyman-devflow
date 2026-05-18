@@ -4,16 +4,20 @@ A Claude Code plugin that runs a structured AI dev cycle on top of Jira + Bitbuc
 
 ## What it does
 
-Takes a Jira ticket from intake to a Bitbucket PR via 8 gated phases:
+Takes a ticket from intake to a PR via 8 gated phases — by default chained end-to-end in one `/handyman-devflow:start` invocation:
 
-1. **Intake** (`/handyman-devflow:start <TICKET>`) — fetch ticket, surface ambiguities, draft requirements, create feature branch
+1. **Intake** (`/handyman-devflow:start <TICKET-or-title>`) — fetch ticket OR derive local id, surface ambiguities, draft requirements, create feature branch
 2. **Research** (`/handyman-devflow:research`) — analyze the codebase against intake's affected areas
 3. **Plan** (`/handyman-devflow:plan`) — produce ordered task list + test plan
-4. **Implement** (`/handyman-devflow:implement`) — execute plan tasks with atomic per-task commits + lint/typecheck
-5. **Test** (`/handyman-devflow:test`) — run unit/integration/e2e, capture evidence bundle (Playwright traces, screenshots)
-6. **Verify** (`/handyman-devflow:verify`) — fresh-context judge subagent reviews against acceptance criteria
+4. **Implement** (`/handyman-devflow:implement`) — execute plan tasks with atomic per-task commits + lint/typecheck + **mandatory real-condition smoke test**
+5. **Test** (`/handyman-devflow:test`) — run unit/integration/e2e + smoke, capture evidence bundle (Playwright traces, screenshots, smoke log)
+6. **Verify** (`/handyman-devflow:verify`) — fresh-context judge subagent reviews against acceptance criteria; auto-loops back to /implement on FAIL/UNCLEAR up to `workflow.verify_max_attempts` times
 7. **Security** (`/handyman-devflow:security`) — `npm audit` + semgrep + OWASP top-10 diff review
-8. **PR** (`/handyman-devflow:pr`) — push branch, open Bitbucket PR via Atlassian MCP, transition Jira ticket
+8. **PR** (`/handyman-devflow:pr`) — push branch, open PR via provider MCP; transitions Jira ticket only when a tracker is configured
+
+By default `workflow.autopilot: true` chains phases 2–8 inside `/start`. The autopilot pauses only on a real blocker (validator failure, smoke failure, verify cap exhausted, security finding, intake `[NEEDS-ANSWER]` markers). To resume after fixing a blocker, re-run `/handyman-devflow:start` with no arguments.
+
+Set `workflow.autopilot: false` to recover the legacy manual flow, or pass `--manual` for a one-shot stop after Phase 1.
 
 Plus `/handyman-devflow:status` (read-only state inspection), `/handyman-devflow:reset --to <phase>` (rewind state.phase), and `/handyman-devflow:setup` (one-time configuration wizard).
 

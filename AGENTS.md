@@ -28,6 +28,15 @@ The `tracker:` block in `.dev-flow/config.yaml` is OPTIONAL. The workflow runs i
 
 Slash commands branch on `devflow config get tracker.type 2>/dev/null || echo NONE`. When extending the workflow, prefer that pattern over hardcoding Jira/Atlassian references — keep new functionality tracker-agnostic where possible.
 
+## Autopilot
+
+`workflow.autopilot: true` (default) makes `/handyman-devflow:start` drive the entire cycle in one invocation: it does Phase 1, then a loop calls `devflow auto next <TICKET>` between phases and invokes the next slash command (`/handyman-devflow:research` → … → `/handyman-devflow:pr`) until either `DONE` (state = `pr-opened`) or `BLOCKED:<reason>`. Re-running `/handyman-devflow:start` with no args resumes from current state.json. Blockers: any non-null `last_error`, verify_attempts at cap on plan-complete, intake validator failing.
+
+When extending the flow, follow this contract so the autopilot keeps working:
+- A phase command must either advance state (success) OR set `state.last_error` to a non-null string (hard blocker). No third path.
+- The verify inner retry loop is the only "soft" loop in the system. It MUST leave `last_error = null` when rewinding so the outer drive continues; it sets `last_error` only when the cap is exhausted.
+- Pure derivation logic for "what runs next" lives in [src/auto.ts](src/auto.ts) — exhaustiveness-checked over `PhaseSchema`. Adding a new phase requires extending both the schema and the switch in `nextPhase`.
+
 ## Workflow design invariant — real-condition verification
 
 The workflow's promise is that **no phase advances on assumption**. Lint passing and unit tests passing are not enough — the artifact must actually run under realistic conditions and produce observable output. This is enforced by:

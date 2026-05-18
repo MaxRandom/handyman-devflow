@@ -82,3 +82,15 @@ export function resetVerifyAttempts(root: string, ticket: string): void {
   if (s.verify_attempts === 0) return;
   writeState(root, { ...s, verify_attempts: 0, updated_at: new Date().toISOString() });
 }
+
+// Clear last_error. Used by /handyman-devflow:resume: invoking resume is
+// itself an assertion that "I've inspected the blocker and want to retry".
+// Returns the prior value so the slash command can show the user what was
+// cleared.
+export function clearError(root: string, ticket: string): string | null {
+  const s = loadState(root, ticket);
+  const prior = s.last_error;
+  if (prior === null) return null;
+  writeState(root, { ...s, last_error: null, updated_at: new Date().toISOString() });
+  return prior;
+}

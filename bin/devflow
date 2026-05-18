@@ -54,6 +54,7 @@ Usage:
   devflow state get <TICKET> [<field>]         # read state.json (full or single field)
   devflow state increment-verify-attempt <TICKET>  # bump verify_attempts on judge FAIL/UNCLEAR
   devflow state reset-verify-attempts <TICKET>     # reset to 0 (after a clean verify PASS)
+  devflow state clear-error <TICKET>           # clear last_error (used by /resume to unblock autopilot)
 EOF
     exit 64
     ;;

@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   loadState, writeState, advancePhase, recordError,
-  incrementVerifyAttempt, resetVerifyAttempts,
+  incrementVerifyAttempt, resetVerifyAttempts, clearError,
   ticketDir, statePath, PhaseSchema,
 } from '../src/state.js';
 
@@ -117,6 +117,34 @@ describe('state', () => {
     // No-op when already 0 — should not throw.
     resetVerifyAttempts(root, 'PROJ-1');
     expect(loadState(root, 'PROJ-1').verify_attempts).toBe(0);
+  });
+
+  it('clearError clears last_error and returns the prior value', () => {
+    writeState(root, {
+      ticket: 'PROJ-1', branch: 'feature/PROJ-1-x',
+      phase: 'plan-complete',
+      updated_at: new Date().toISOString(),
+      last_error: 'smoke failed: exit 7',
+      verify_attempts: 0,
+    });
+    const prior = clearError(root, 'PROJ-1');
+    expect(prior).toBe('smoke failed: exit 7');
+    expect(loadState(root, 'PROJ-1').last_error).toBeNull();
+  });
+
+  it('clearError returns null and does not write when last_error is already null (idempotent)', () => {
+    const ts = '2026-05-18T00:00:00.000Z';
+    writeState(root, {
+      ticket: 'PROJ-1', branch: 'feature/PROJ-1-x',
+      phase: 'plan-complete',
+      updated_at: ts,
+      last_error: null,
+      verify_attempts: 0,
+    });
+    const prior = clearError(root, 'PROJ-1');
+    expect(prior).toBeNull();
+    // No write means updated_at is unchanged.
+    expect(loadState(root, 'PROJ-1').updated_at).toBe(ts);
   });
 
   it('advancePhase preserves verify_attempts (the counter only resets on resetVerifyAttempts)', () => {

@@ -6,11 +6,11 @@ argument-hint: "<TICKET-KEY-or-freeform-title> [--manual] | (no args = resume cu
 
 # /handyman-devflow:start — Phase 1 (Intake) + autopilot
 
-This command is BOTH:
-1. The entry point for a new ticket — pass a Jira key (tracker mode) or freeform title (local-ticket mode).
-2. The resume point for an in-progress ticket — call with no argument and the autopilot picks up from `state.json`.
+This command is the entry point for a NEW ticket — pass a Jira key (tracker mode) or freeform title (local-ticket mode).
 
-By default it chains every phase (`research → plan → implement → test → verify → security → pr`) until a blocker or completion. Set `workflow.autopilot: false` in `.dev-flow/config.yaml` for the legacy per-phase manual flow, or pass `--manual` for a one-off stop after Phase 1.
+To **resume** an interrupted ticket (after a context reset, session crash, or autopilot blocker), prefer the explicit [`/handyman-devflow:resume`](resume.md) command. `/start` with no arg is still accepted as a convenience alias for resume (it detects an existing ticket folder and jumps to the drive loop), but `/resume` makes the intent clear and exposes `--retry-verify` for unblocking a verify-cap exhaustion.
+
+By default `/start` chains every phase (`research → plan → implement → test → verify → security → pr`) until a blocker or completion. Set `workflow.autopilot: false` in `.dev-flow/config.yaml` for the legacy per-phase manual flow, or pass `--manual` for a one-off stop after Phase 1.
 
 If you are unsure about the overall flow, read `${CLAUDE_PLUGIN_ROOT}/templates/PROCESS.md`.
 

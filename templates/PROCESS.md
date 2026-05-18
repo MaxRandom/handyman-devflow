@@ -36,6 +36,25 @@ The verify *inner* loop (FAIL/UNCLEAR → rewind to plan-complete → retry impl
 
 To opt out: set `workflow.autopilot: false` in `.dev-flow/config.yaml`, or pass `--manual` to `/start` for a one-shot stop after Phase 1.
 
+### Resuming after an interruption
+
+When a session crashes, the context resets, or the autopilot pauses on a blocker, use `/handyman-devflow:resume`:
+
+```
+/handyman-devflow:resume                  # resume current branch's ticket
+/handyman-devflow:resume PROJ-123         # switch branch + resume
+/handyman-devflow:resume --retry-verify   # also reset verify_attempts to 0 (fresh budget)
+```
+
+What it does:
+1. Identifies the ticket (`$1` or the current branch's recorded `state.json`).
+2. Prints the current state.
+3. Clears `last_error` — invoking `/resume` is the human confirmation that the blocker is resolved.
+4. With `--retry-verify`, resets `verify_attempts` to 0.
+5. Commits the state mutation and re-enters the autopilot drive loop.
+
+The drive loop is identical to `/start`'s — so resuming a half-done ticket and starting a fresh one share the same state-machine logic.
+
 ## Phase order
 1. **Intake** (`/task:start <TICKET-KEY-or-freeform-title>`) — fetch ticket (tracker mode) OR derive local id from title (local-ticket mode), draft requirements, surface open questions, create feature branch.
 2. **Research** (`/task:research`) — analyze codebase, document patterns to follow.

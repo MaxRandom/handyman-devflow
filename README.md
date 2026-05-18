@@ -19,7 +19,7 @@ By default `workflow.autopilot: true` chains phases 2–8 inside `/start`. The a
 
 Set `workflow.autopilot: false` to recover the legacy manual flow, or pass `--manual` for a one-shot stop after Phase 1.
 
-Plus `/handyman-devflow:status` (read-only state inspection), `/handyman-devflow:reset --to <phase>` (rewind state.phase), and `/handyman-devflow:setup` (one-time configuration wizard).
+Plus `/handyman-devflow:resume [<TICKET>] [--retry-verify]` (resume an interrupted ticket — clears the last_error blocker and re-enters the autopilot loop), `/handyman-devflow:status` (read-only state inspection), `/handyman-devflow:reset --to <phase>` (rewind state.phase), and `/handyman-devflow:setup` (one-time configuration wizard).
 
 ## Why
 

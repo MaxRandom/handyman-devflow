@@ -30,7 +30,7 @@ Slash commands branch on `devflow config get tracker.type 2>/dev/null || echo NO
 
 ## Autopilot
 
-`workflow.autopilot: true` (default) makes `/handyman-devflow:start` drive the entire cycle in one invocation: it does Phase 1, then a loop calls `devflow auto next <TICKET>` between phases and invokes the next slash command (`/handyman-devflow:research` → … → `/handyman-devflow:pr`) until either `DONE` (state = `pr-opened`) or `BLOCKED:<reason>`. Re-running `/handyman-devflow:start` with no args resumes from current state.json. Blockers: any non-null `last_error`, verify_attempts at cap on plan-complete, intake validator failing.
+`workflow.autopilot: true` (default) makes `/handyman-devflow:start` drive the entire cycle in one invocation: it does Phase 1, then a loop calls `devflow auto next <TICKET>` between phases and invokes the next slash command (`/handyman-devflow:research` → … → `/handyman-devflow:pr`) until either `DONE` (state = `pr-opened`) or `BLOCKED:<reason>`. For resuming an interrupted session use `/handyman-devflow:resume [<TICKET>] [--retry-verify]` — it clears `last_error`, optionally resets `verify_attempts`, then re-enters the same drive loop. Blockers: any non-null `last_error`, verify_attempts at cap on plan-complete, intake validator failing.
 
 When extending the flow, follow this contract so the autopilot keeps working:
 - A phase command must either advance state (success) OR set `state.last_error` to a non-null string (hard blocker). No third path.

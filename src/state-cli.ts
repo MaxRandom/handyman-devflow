@@ -12,6 +12,7 @@ import {
   loadState,
   incrementVerifyAttempt,
   resetVerifyAttempts,
+  clearError,
   type State,
 } from './state.js';
 import { findProjectRoot } from './utils/project-root.js';
@@ -21,6 +22,7 @@ function usage(): never {
   console.error('  tsx state-cli.ts get <TICKET> [<field>]');
   console.error('  tsx state-cli.ts increment-verify-attempt <TICKET>');
   console.error('  tsx state-cli.ts reset-verify-attempts <TICKET>');
+  console.error('  tsx state-cli.ts clear-error <TICKET>');
   process.exit(2);
 }
 
@@ -51,6 +53,14 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 
   if (cmd === 'reset-verify-attempts') {
     resetVerifyAttempts(root, ticket);
+    process.exit(0);
+  }
+
+  if (cmd === 'clear-error') {
+    const prior = clearError(root, ticket);
+    // Echo prior value so the caller can show "Cleared: <reason>" — empty
+    // string when there was no error (idempotent no-op).
+    if (prior !== null) process.stdout.write(prior);
     process.exit(0);
   }
 
